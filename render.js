@@ -594,6 +594,9 @@ function renderTrends(bookId, chapterId) {
 
   const chapterSeries = computeChapterTrend(Store, chapterId);
   const weakest = weakestQuestions(Store, chapterId, 5);
+  const anyGraded = chapter.questionOrder.some((qid) =>
+    computeQuestionTrend(Store, qid).sequence.some((s) => s.correct !== null)
+  );
 
   const weakestRows = weakest.map((w) =>
     "<tr><td>Question " + w.questionNumber + "</td><td>" + Math.round(w.incorrectRate * 100) + "%</td><td>" + w.gradedCount + "</td></tr>"
@@ -612,7 +615,9 @@ function renderTrends(bookId, chapterId) {
     '<div class="card"><h2>Weakest questions</h2>' +
     (weakestRows
       ? '<div class="table-wrap"><table><thead><tr><th>Question</th><th>Incorrect rate</th><th>Graded attempts</th></tr></thead><tbody>' + weakestRows + "</tbody></table></div>"
-      : "<p>Not enough graded attempts yet.</p>") +
+      : anyGraded
+        ? "<p>No incorrect answers yet &mdash; nice work!</p>"
+        : "<p>Not enough graded attempts yet.</p>") +
     "</div>" +
     '<div class="card"><h2>Per-question history</h2>' +
     '<div class="table-wrap"><table><thead><tr><th>Question</th><th>Attempt sequence</th></tr></thead><tbody>' + questionRows + "</tbody></table></div>" +

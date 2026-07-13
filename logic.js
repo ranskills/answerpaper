@@ -81,7 +81,7 @@ function weakestQuestions(store, chapterId, n) {
     return { questionId: qid, questionNumber: idx + 1, incorrectRate, gradedCount: graded.length };
   });
   return stats
-    .filter((s) => s.gradedCount > 0)
+    .filter((s) => s.gradedCount > 0 && s.incorrectRate > 0)
     .sort((a, b) => b.incorrectRate - a.incorrectRate)
     .slice(0, n);
 }
