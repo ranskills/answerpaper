@@ -271,6 +271,12 @@ fieldset {
   min-height: 44px;
 }
 
+.field-error {
+  color: var(--error);
+  font-weight: 600;
+  margin: 0 0 var(--space-3) 0;
+}
+
 /* ---------- Tables ---------- */
 
 .table-wrap {

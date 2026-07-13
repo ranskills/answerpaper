@@ -301,11 +301,12 @@ function renderAttemptWizard(bookId, chapterId) {
         lastMcqConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
         draftQuestions: [], draftAnswers: [],
         currentType: "mcq", currentConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
+        error: null,
       };
     } else {
       Wizard = {
         chapterId, bookId, mode: "retake",
-        index: 0, responses: {},
+        index: 0, responses: {}, error: null,
       };
     }
   }
@@ -365,6 +366,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
     "</select>" +
     configHtml +
     answerHtml +
+    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
     '<div class="btn-row"><button type="button" class="primary" onclick="wizardCommitQuestion(' + isLast + ')">' +
     (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
     "</div>"
@@ -407,6 +409,13 @@ function wizardCommitQuestion(isLast) {
   const type = Wizard.currentType;
   const config = Wizard.currentConfig;
   const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+
+  if (checked.length === 0) {
+    Wizard.error = "Select an answer before continuing.";
+    render();
+    return;
+  }
+  Wizard.error = null;
 
   Wizard.draftQuestions.push({ type, config: Object.assign({}, config) });
   Wizard.draftAnswers.push({ chosen: checked });
@@ -455,6 +464,7 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
     "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
     '<p class="wizard-progress">Question ' + (i + 1) + " of " + chapter.questionOrder.length + "</p>" +
     '<div class="card">' + answerHtml +
+    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
     '<div class="btn-row"><button type="button" class="primary" onclick="retakeCommitQuestion(\'' + questionId + '\',' + isLast + ')">' +
     (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
     "</div>"
@@ -463,6 +473,14 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
 
 function retakeCommitQuestion(questionId, isLast) {
   const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+
+  if (checked.length === 0) {
+    Wizard.error = "Select an answer before continuing.";
+    render();
+    return;
+  }
+  Wizard.error = null;
+
   Wizard.responses[questionId] = checked;
 
   if (isLast) {
