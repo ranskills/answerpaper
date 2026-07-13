@@ -85,6 +85,8 @@ function renderHome() {
 
 /* ---------- Books ---------- */
 
+let uiState = { addBookOpen: false, addChapterOpen: false };
+
 function renderBookList() {
   const cards = Store.books.map((book) => {
     const chapterCount = Store.chapters.filter((c) => c.bookId === book.id).length;
@@ -100,15 +102,27 @@ function renderBookList() {
     );
   }).join("");
 
+  const addForm = uiState.addBookOpen
+    ? '<div class="card">' +
+      '<label for="new-book-title">New book title</label>' +
+      '<input id="new-book-title" type="text" placeholder="e.g. Organic Chemistry" autofocus />' +
+      '<div class="btn-row">' +
+      '<button type="button" class="primary" onclick="handleAddBook()">Add book</button>' +
+      '<button type="button" onclick="toggleAddBookForm(false)">Cancel</button>' +
+      "</div>" +
+      "</div>"
+    : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddBookForm(true)">+ Add book</button></div>';
+
   mount(
     "<h1>Books</h1>" +
-    '<div class="card">' +
-    '<label for="new-book-title">New book title</label>' +
-    '<input id="new-book-title" type="text" placeholder="e.g. Organic Chemistry" />' +
-    '<div class="btn-row"><button type="button" class="primary" onclick="handleAddBook()">Add book</button></div>' +
-    "</div>" +
+    addForm +
     '<div class="card-list">' + (cards || '<div class="card"><p>No books yet.</p></div>') + "</div>"
   );
+}
+
+function toggleAddBookForm(open) {
+  uiState.addBookOpen = open;
+  renderBookList();
 }
 
 function handleAddBook() {
@@ -116,6 +130,7 @@ function handleAddBook() {
   const title = input.value.trim();
   if (!title) return;
   addBook(title);
+  uiState.addBookOpen = false;
   renderBookList();
 }
 
@@ -162,16 +177,28 @@ function renderChapterList(bookId) {
     );
   }).join("");
 
+  const addForm = uiState.addChapterOpen
+    ? '<div class="card">' +
+      '<label for="new-chapter-title">New chapter title</label>' +
+      '<input id="new-chapter-title" type="text" placeholder="e.g. Chapter 4: Alkenes" autofocus />' +
+      '<div class="btn-row">' +
+      '<button type="button" class="primary" onclick="handleAddChapter(\'' + bookId + '\')">Add chapter</button>' +
+      '<button type="button" onclick="toggleAddChapterForm(false, \'' + bookId + '\')">Cancel</button>' +
+      "</div>" +
+      "</div>"
+    : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddChapterForm(true, \'' + bookId + '\')">+ Add chapter</button></div>';
+
   mount(
     '<p><a href="#/books">&larr; All books</a></p>' +
     "<h1>" + esc(book.title) + "</h1>" +
-    '<div class="card">' +
-    '<label for="new-chapter-title">New chapter title</label>' +
-    '<input id="new-chapter-title" type="text" placeholder="e.g. Chapter 4: Alkenes" />' +
-    '<div class="btn-row"><button type="button" class="primary" onclick="handleAddChapter(\'' + bookId + '\')">Add chapter</button></div>' +
-    "</div>" +
+    addForm +
     '<div class="card-list">' + (cards || '<div class="card"><p>No chapters yet.</p></div>') + "</div>"
   );
+}
+
+function toggleAddChapterForm(open, bookId) {
+  uiState.addChapterOpen = open;
+  renderChapterList(bookId);
 }
 
 function handleAddChapter(bookId) {
@@ -179,6 +206,7 @@ function handleAddChapter(bookId) {
   const title = input.value.trim();
   if (!title) return;
   addChapter(bookId, title);
+  uiState.addChapterOpen = false;
   renderChapterList(bookId);
 }
 
