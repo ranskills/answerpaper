@@ -303,6 +303,11 @@ th, td {
 
 .chart-wrap {
   margin: var(--space-3) 0;
+  overflow-x: auto;
+}
+
+.chart-wrap svg {
+  min-width: 560px;
 }
 
 .chart-wrap svg text {

@@ -279,7 +279,7 @@ function renderChapterDetail(bookId, chapterId) {
 }
 
 function renderScoreLineChart(series) {
-  const width = 560, height = 200, padL = 36, padR = 16, padT = 16, padB = 28;
+  const width = 560, height = 200, padL = 36, padR = 16, padT = 28, padB = 28;
   const innerW = width - padL - padR, innerH = height - padT - padB;
   const n = series.length;
   const x = (i) => padL + (n === 1 ? innerW / 2 : (innerW * i) / (n - 1));
