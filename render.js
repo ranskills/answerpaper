@@ -231,8 +231,9 @@ function renderChapterDetail(bookId, chapterId) {
     '<div class="btn-row">' +
     '<a class="btn primary" href="#/books/' + bookId + '/chapters/' + chapterId + '/attempt">' +
     (isFirstTime ? "Start attempt" : "Retake") + "</a>" +
-    (isFirstTime ? "" : '<a class="btn" href="#/books/' + bookId + '/chapters/' + chapterId + '/trends">View trends</a>') +
-    '<a class="btn" href="#/books/' + bookId + '/chapters/' + chapterId + '/print">Print blank paper</a>' +
+    (isFirstTime ? "" :
+      '<a class="btn" href="#/books/' + bookId + '/chapters/' + chapterId + '/trends">View trends</a>' +
+      '<a class="btn" href="#/books/' + bookId + '/chapters/' + chapterId + '/print">Print blank paper</a>') +
     "</div>" +
     (chartSeries.length ? '<div class="card"><h2>Score over time</h2>' + renderScoreLineChart(chartSeries) + "</div>" : "") +
     '<div class="card"><h2>Past attempts</h2>' +
