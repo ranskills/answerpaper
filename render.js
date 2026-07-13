@@ -331,6 +331,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
   const type = Wizard.currentType;
   const config = Wizard.currentConfig;
   const isLast = i === Wizard.total - 1;
+  const pendingChosen = Wizard.pendingChosen || [];
 
   let configHtml = "";
   let answerHtml = "";
@@ -344,14 +345,15 @@ function renderNewWizard(bookId, chapterId, chapter) {
 
     const inputType = config.multiSelect ? "checkbox" : "radio";
     answerHtml = '<fieldset><legend>Your answer</legend>' + config.optionLabels.map((label) =>
-      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" />' +
+      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" ' +
+      (pendingChosen.includes(label) ? "checked" : "") + ' />' +
       '<label for="opt-' + label + '" style="margin:0">' + label + "</label></div>"
     ).join("") + "</fieldset>";
   } else {
     answerHtml =
       '<fieldset><legend>Your answer</legend>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" /><label for="opt-true" style="margin:0">True</label></div>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" /><label for="opt-false" style="margin:0">False</label></div>' +
+      '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" ' + (pendingChosen.includes("true") ? "checked" : "") + ' /><label for="opt-true" style="margin:0">True</label></div>' +
+      '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" ' + (pendingChosen.includes("false") ? "checked" : "") + ' /><label for="opt-false" style="margin:0">False</label></div>' +
       "</fieldset>";
   }
 
@@ -367,10 +369,24 @@ function renderNewWizard(bookId, chapterId, chapter) {
     configHtml +
     answerHtml +
     (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
-    '<div class="btn-row"><button type="button" class="primary" onclick="wizardCommitQuestion(' + isLast + ')">' +
+    '<div class="btn-row">' +
+    (i > 0 ? '<button type="button" onclick="wizardGoBack()">Previous question</button>' : "") +
+    '<button type="button" class="primary" onclick="wizardCommitQuestion(' + isLast + ')">' +
     (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
     "</div>"
   );
+}
+
+function wizardGoBack() {
+  if (Wizard.index === 0) return;
+  const prev = Wizard.draftQuestions.pop();
+  const prevAnswer = Wizard.draftAnswers.pop();
+  Wizard.index -= 1;
+  Wizard.currentType = prev.type;
+  Wizard.currentConfig = Object.assign({}, prev.config, prev.config.optionLabels ? { optionLabels: prev.config.optionLabels.slice() } : {});
+  Wizard.pendingChosen = prevAnswer.chosen.slice();
+  Wizard.error = null;
+  render();
 }
 
 function startNewWizardQuestions() {
@@ -385,6 +401,7 @@ function startNewWizardQuestions() {
 
 function wizardUpdateType(type) {
   Wizard.currentType = type;
+  Wizard.pendingChosen = null;
   if (type === "mcq") {
     Wizard.currentConfig = Object.assign({}, Wizard.lastMcqConfig, { optionLabels: Wizard.lastMcqConfig.optionLabels.slice() });
   } else {
@@ -419,6 +436,7 @@ function wizardCommitQuestion(isLast) {
 
   Wizard.draftQuestions.push({ type, config: Object.assign({}, config) });
   Wizard.draftAnswers.push({ chosen: checked });
+  Wizard.pendingChosen = null;
 
   if (type === "mcq") {
     Wizard.lastMcqConfig = Object.assign({}, config, { optionLabels: config.optionLabels.slice() });
@@ -444,19 +462,21 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
   const questionId = chapter.questionOrder[i];
   const question = Store.questions.find((q) => q.id === questionId);
   const isLast = i === chapter.questionOrder.length - 1;
+  const priorChosen = Wizard.responses[questionId] || [];
 
   let answerHtml = "";
   if (question.type === "mcq") {
     const inputType = question.config.multiSelect ? "checkbox" : "radio";
     answerHtml = '<fieldset><legend>Your answer</legend>' + question.config.optionLabels.map((label) =>
-      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" />' +
+      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" ' +
+      (priorChosen.includes(label) ? "checked" : "") + ' />' +
       '<label for="opt-' + label + '" style="margin:0">' + label + "</label></div>"
     ).join("") + "</fieldset>";
   } else {
     answerHtml =
       '<fieldset><legend>Your answer</legend>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" /><label for="opt-true" style="margin:0">True</label></div>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" /><label for="opt-false" style="margin:0">False</label></div>' +
+      '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" ' + (priorChosen.includes("true") ? "checked" : "") + ' /><label for="opt-true" style="margin:0">True</label></div>' +
+      '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" ' + (priorChosen.includes("false") ? "checked" : "") + ' /><label for="opt-false" style="margin:0">False</label></div>' +
       "</fieldset>";
   }
 
@@ -465,10 +485,19 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
     '<p class="wizard-progress">Question ' + (i + 1) + " of " + chapter.questionOrder.length + "</p>" +
     '<div class="card">' + answerHtml +
     (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
-    '<div class="btn-row"><button type="button" class="primary" onclick="retakeCommitQuestion(\'' + questionId + '\',' + isLast + ')">' +
+    '<div class="btn-row">' +
+    (i > 0 ? '<button type="button" onclick="retakeGoBack()">Previous question</button>' : "") +
+    '<button type="button" class="primary" onclick="retakeCommitQuestion(\'' + questionId + '\',' + isLast + ')">' +
     (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
     "</div>"
   );
+}
+
+function retakeGoBack() {
+  if (Wizard.index === 0) return;
+  Wizard.index -= 1;
+  Wizard.error = null;
+  render();
 }
 
 function retakeCommitQuestion(questionId, isLast) {
