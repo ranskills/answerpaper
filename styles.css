@@ -222,7 +222,13 @@ button.danger {
 
 .card .card-link {
   text-decoration: none;
-  color: var(--text);
+  color: var(--accent);
+  display: inline-block;
+}
+
+.card .card-link:hover,
+.card .card-link:focus-visible {
+  text-decoration: underline;
 }
 
 .card-meta {
