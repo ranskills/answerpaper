@@ -12,6 +12,12 @@ function formatDate(iso) {
     " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatAnswerValue(value) {
+  if (value === "true") return "True";
+  if (value === "false") return "False";
+  return value;
+}
+
 function mount(html) {
   document.getElementById("main").innerHTML = html;
 }
@@ -535,7 +541,9 @@ function renderReview(bookId, chapterId, attemptId) {
 
   const rows = attempt.responses.map((response, idx) => {
     const question = Store.questions.find((q) => q.id === response.questionId);
-    const chosenLabel = response.chosen.length ? response.chosen.join(", ") : "(no answer)";
+    const chosenLabel = response.chosen.length
+      ? response.chosen.map(formatAnswerValue).join(", ")
+      : "(no answer)";
 
     let correctInput = "";
     if (question.type === "mcq") {
