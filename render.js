@@ -101,7 +101,7 @@ function renderBookList() {
     '<input id="new-book-title" type="text" placeholder="e.g. Organic Chemistry" />' +
     '<div class="btn-row"><button type="button" class="primary" onclick="handleAddBook()">Add book</button></div>' +
     "</div>" +
-    '<div class="card-list">' + (cards || "<p>No books yet.</p>") + "</div>"
+    '<div class="card-list">' + (cards || '<div class="card"><p>No books yet.</p></div>') + "</div>"
   );
 }
 
@@ -164,7 +164,7 @@ function renderChapterList(bookId) {
     '<input id="new-chapter-title" type="text" placeholder="e.g. Chapter 4: Alkenes" />' +
     '<div class="btn-row"><button type="button" class="primary" onclick="handleAddChapter(\'' + bookId + '\')">Add chapter</button></div>' +
     "</div>" +
-    '<div class="card-list">' + (cards || "<p>No chapters yet.</p>") + "</div>"
+    '<div class="card-list">' + (cards || '<div class="card"><p>No chapters yet.</p></div>') + "</div>"
   );
 }
 
