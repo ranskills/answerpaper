@@ -175,6 +175,43 @@ function applyCorrectAnswer(questionId, correctAnswer) {
   saveStore();
 }
 
+/* ---------- Question management ---------- */
+
+function addQuestionToChapter(chapterId, type, config) {
+  const chapter = Store.chapters.find((c) => c.id === chapterId);
+  const question = { id: uid("q"), chapterId, type, config, correctAnswer: null };
+  Store.questions.push(question);
+  chapter.questionOrder.push(question.id);
+  saveStore();
+  return question;
+}
+
+function questionCascadeCounts(chapterId, questionId) {
+  const attempts = Store.attempts.filter((a) => a.chapterId === chapterId && a.responses.some((r) => r.questionId === questionId));
+  return { attemptCount: attempts.length };
+}
+
+function deleteQuestion(chapterId, questionId) {
+  const chapter = Store.chapters.find((c) => c.id === chapterId);
+  chapter.questionOrder = chapter.questionOrder.filter((qid) => qid !== questionId);
+  Store.questions = Store.questions.filter((q) => q.id !== questionId);
+  Store.attempts.forEach((attempt) => {
+    if (attempt.chapterId !== chapterId) return;
+    attempt.responses = attempt.responses.filter((r) => r.questionId !== questionId);
+  });
+  saveStore();
+}
+
+function reorderQuestion(chapterId, questionId, direction) {
+  const chapter = Store.chapters.find((c) => c.id === chapterId);
+  const order = chapter.questionOrder;
+  const idx = order.indexOf(questionId);
+  const swapWith = idx + direction;
+  if (idx < 0 || swapWith < 0 || swapWith >= order.length) return;
+  [order[idx], order[swapWith]] = [order[swapWith], order[idx]];
+  saveStore();
+}
+
 /* ---------- Export / Import ---------- */
 
 function exportData() {
@@ -182,12 +219,23 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   const stamp = new Date().toISOString().slice(0, 10);
+  const filename = "answerpaper-export-" + stamp + ".json";
   a.href = url;
-  a.download = "answerpaper-export-" + stamp + ".json";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  showToast("Exported " + filename);
+}
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.setAttribute("role", "status");
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 function importData(file, onDone) {
@@ -221,6 +269,13 @@ function navigate(hash) {
   location.hash = hash;
 }
 
+window.addEventListener("beforeunload", (e) => {
+  if (typeof wizardHasProgress === "function" && wizardHasProgress()) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
 window.addEventListener("hashchange", () => render());
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("version-tag").textContent = APP_VERSION;
@@ -231,8 +286,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const summary = { books: Store.books.length, chapters: Store.chapters.length, attempts: Store.attempts.length };
     const ok = confirm(
       "Importing will replace your current data (" +
-        summary.books + " book(s), " + summary.chapters + " chapter(s), " +
-        summary.attempts + " attempt(s)). Continue?"
+        pluralize(summary.books, "book") + ", " + pluralize(summary.chapters, "chapter") +
+        ", " + pluralize(summary.attempts, "attempt") + "). Continue?"
     );
     if (!ok) {
       e.target.value = "";

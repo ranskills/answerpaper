@@ -31,5 +31,10 @@ function buildPrintView(chapterId) {
 
   root.innerHTML =
     "<h1>" + esc(book ? book.title : "") + " &mdash; " + esc(chapter.title) + "</h1>" +
+    '<div class="print-header-block">' +
+    '<span class="print-field">Name: <span class="print-fill-line"></span></span>' +
+    '<span class="print-field">Date: <span class="print-fill-line"></span></span>' +
+    '<span class="print-field">Score: <span class="print-fill-line short"></span> of ' + chapter.questionOrder.length + "</span>" +
+    "</div>" +
     questionsHtml;
 }

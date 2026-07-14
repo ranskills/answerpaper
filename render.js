@@ -22,11 +22,42 @@ function formatChosenSummary(chosen) {
   return chosen.length ? chosen.map(formatAnswerValue).join(", ") : "";
 }
 
+function pluralize(count, noun) {
+  return count + " " + noun + (count === 1 ? "" : "s");
+}
+
+function formatScoreLabel(score) {
+  if (score.lockedCount === 0) return "Ungraded";
+  const parts = [score.scorePercent + "%"];
+  const notes = [];
+  if (score.unansweredCount > 0) notes.push(score.unansweredCount + " unanswered");
+  if (score.trulyUngradedCount > 0) notes.push(pluralize(score.trulyUngradedCount, "question") + " not yet graded");
+  if (notes.length) parts.push("(" + notes.join(", ") + ")");
+  return parts.join(" ");
+}
+
 function mount(html) {
   document.getElementById("main").innerHTML = html;
 }
 
+function updateNavActiveState() {
+  const parts = currentRoute();
+  const homeLink = document.querySelector('nav a[href="#/"]');
+  const booksLink = document.querySelector('nav a[href="#/books"]');
+  const isHome = parts.length === 0;
+  const isBooks = parts[0] === "books";
+  if (homeLink) {
+    if (isHome) homeLink.setAttribute("aria-current", "page");
+    else homeLink.removeAttribute("aria-current");
+  }
+  if (booksLink) {
+    if (isBooks) booksLink.setAttribute("aria-current", "page");
+    else booksLink.removeAttribute("aria-current");
+  }
+}
+
 function render() {
+  updateNavActiveState();
   const parts = currentRoute();
   if (parts.length === 0) return renderHome();
   if (parts[0] === "books" && parts.length === 1) return renderBookList();
@@ -54,6 +85,7 @@ function render() {
 /* ---------- Home ---------- */
 
 function renderHome() {
+  document.title = "AnswerPaper";
   const attempts = Store.attempts
     .slice()
     .sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt))
@@ -63,9 +95,7 @@ function renderHome() {
     const chapter = Store.chapters.find((c) => c.id === attempt.chapterId);
     if (!chapter) return "";
     const book = Store.books.find((b) => b.id === chapter.bookId);
-    const graded = attempt.responses.filter((r) => r.correct !== null);
-    const correctCount = graded.filter((r) => r.correct === true).length;
-    const score = graded.length ? Math.round((correctCount / graded.length) * 100) + "%" : "Ungraded";
+    const score = formatScoreLabel(computeAttemptScore(Store, attempt));
     return (
       '<tr>' +
       '<td><a href="#/books/' + book.id + '/chapters/' + chapter.id + '">' + esc(book.title) + " &rsaquo; " + esc(chapter.title) + '</a></td>' +
@@ -75,31 +105,52 @@ function renderHome() {
     );
   }).join("");
 
+  const onboarding = Store.books.length === 0
+    ? '<p class="onboarding-hint">New here? The workflow is: create a <strong>book</strong> &rarr; add a <strong>chapter</strong> to it &rarr; take an <strong>attempt</strong> on the chapter &rarr; grade your answers &rarr; retake and track trends over time.</p>'
+    : "";
+
   mount(
     '<h1>Home</h1>' +
+    onboarding +
     '<div class="card">' +
     "<h2>Recent activity</h2>" +
     (attempts.length
       ? '<div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Date</th><th>Score</th></tr></thead><tbody>' + rows + "</tbody></table></div>"
       : "<p>No attempts yet. <a href=\"#/books\">Start with your books</a>.</p>") +
     "</div>" +
-    '<div class="btn-row"><a class="btn primary" href="#/books">View all books</a></div>'
+    (Store.books.length === 0 ? '<div class="btn-row"><a class="btn primary" href="#/books">Get started</a></div>' : "")
   );
 }
 
 /* ---------- Books ---------- */
 
-let uiState = { addBookOpen: false, addChapterOpen: false };
+let uiState = {
+  addBookOpen: false, addChapterOpen: false, renameBookId: null, renameChapterId: null,
+  addQuestionOpen: false, addQuestionDraft: null,
+};
 
 function renderBookList() {
+  document.title = "Books — AnswerPaper";
   const cards = Store.books.map((book) => {
     const chapterCount = Store.chapters.filter((c) => c.bookId === book.id).length;
+    if (uiState.renameBookId === book.id) {
+      return (
+        '<div class="card">' +
+        '<form onsubmit="return handleRenameBook(event,\'' + book.id + '\')">' +
+        '<label for="rename-book-title">Rename book</label>' +
+        '<input id="rename-book-title" type="text" value="' + esc(book.title) + '" required autofocus />' +
+        '<div class="btn-row">' +
+        '<button type="submit" class="primary">Save</button>' +
+        '<button type="button" onclick="toggleRenameBookForm(null)">Cancel</button>' +
+        "</div></form></div>"
+      );
+    }
     return (
       '<div class="card">' +
       '<a class="card-link" href="#/books/' + book.id + '/chapters"><h3>' + esc(book.title) + "</h3></a>" +
-      '<p class="card-meta">' + chapterCount + " chapter(s)</p>" +
+      '<p class="card-meta">' + pluralize(chapterCount, "chapter") + "</p>" +
       '<div class="btn-row">' +
-      '<button type="button" onclick="promptRenameBook(\'' + book.id + '\')">Rename</button>' +
+      '<button type="button" onclick="toggleRenameBookForm(\'' + book.id + '\')">Rename</button>' +
       '<button type="button" class="danger" onclick="promptDeleteBook(\'' + book.id + '\')">Delete</button>' +
       "</div>" +
       "</div>"
@@ -108,13 +159,13 @@ function renderBookList() {
 
   const addForm = uiState.addBookOpen
     ? '<div class="card">' +
+      '<form onsubmit="return handleAddBook(event)">' +
       '<label for="new-book-title">New book title</label>' +
-      '<input id="new-book-title" type="text" placeholder="e.g. Organic Chemistry" autofocus />' +
+      '<input id="new-book-title" type="text" placeholder="e.g. Organic Chemistry" required autofocus />' +
       '<div class="btn-row">' +
-      '<button type="button" class="primary" onclick="handleAddBook()">Add book</button>' +
+      '<button type="submit" class="primary">Add book</button>' +
       '<button type="button" onclick="toggleAddBookForm(false)">Cancel</button>' +
-      "</div>" +
-      "</div>"
+      "</div></form></div>"
     : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddBookForm(true)">+ Add book</button></div>';
 
   const wipeLink = Store.books.length
@@ -123,6 +174,7 @@ function renderBookList() {
 
   mount(
     "<h1>Books</h1>" +
+    (Store.books.length ? "" : '<p class="onboarding-hint">Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.</p>') +
     addForm +
     '<div class="card-list">' + (cards || '<div class="card"><p>No books yet.</p></div>') + "</div>" +
     wipeLink
@@ -132,8 +184,8 @@ function renderBookList() {
 function promptResetAllData() {
   const counts = allDataCounts();
   const ok = confirm(
-    "Delete ALL data — " + counts.bookCount + " book(s), " + counts.chapterCount +
-    " chapter(s), " + counts.attemptCount + " attempt(s) total? This cannot be undone. " +
+    "Delete ALL data — " + pluralize(counts.bookCount, "book") + ", " + pluralize(counts.chapterCount, "chapter") +
+    ", " + pluralize(counts.attemptCount, "attempt") + " total? This cannot be undone. " +
     "Consider using Export first if you want a backup."
   );
   if (ok) {
@@ -147,30 +199,39 @@ function toggleAddBookForm(open) {
   renderBookList();
 }
 
-function handleAddBook() {
+function handleAddBook(event) {
+  event.preventDefault();
   const input = document.getElementById("new-book-title");
   const title = input.value.trim();
-  if (!title) return;
+  if (!title) return false;
   addBook(title);
   uiState.addBookOpen = false;
   renderBookList();
+  return false;
 }
 
-function promptRenameBook(bookId) {
-  const book = Store.books.find((b) => b.id === bookId);
-  const title = prompt("Rename book", book.title);
-  if (title && title.trim()) {
-    renameBook(bookId, title);
-    renderBookList();
-  }
+function toggleRenameBookForm(bookId) {
+  uiState.renameBookId = bookId;
+  renderBookList();
+}
+
+function handleRenameBook(event, bookId) {
+  event.preventDefault();
+  const input = document.getElementById("rename-book-title");
+  const title = input.value.trim();
+  if (!title) return false;
+  renameBook(bookId, title);
+  uiState.renameBookId = null;
+  renderBookList();
+  return false;
 }
 
 function promptDeleteBook(bookId) {
   const book = Store.books.find((b) => b.id === bookId);
   const counts = bookCascadeCounts(bookId);
   const ok = confirm(
-    "Delete book '" + book.title + "' and all " + counts.chapterCount +
-    " chapter(s) (" + counts.attemptCount + " attempt(s) total)? This cannot be undone."
+    "Delete book '" + book.title + "' and all " + pluralize(counts.chapterCount, "chapter") +
+    " (" + pluralize(counts.attemptCount, "attempt") + " total)? This cannot be undone."
   );
   if (ok) {
     deleteBook(bookId);
@@ -183,16 +244,29 @@ function promptDeleteBook(bookId) {
 function renderChapterList(bookId) {
   const book = Store.books.find((b) => b.id === bookId);
   if (!book) return mount('<p>Book not found. <a href="#/books">Go back</a>.</p>');
+  document.title = book.title + " — AnswerPaper";
 
   const chapters = Store.chapters.filter((c) => c.bookId === bookId);
   const cards = chapters.map((chapter) => {
     const attemptCount = Store.attempts.filter((a) => a.chapterId === chapter.id).length;
+    if (uiState.renameChapterId === chapter.id) {
+      return (
+        '<div class="card">' +
+        '<form onsubmit="return handleRenameChapter(event,\'' + bookId + '\',\'' + chapter.id + '\')">' +
+        '<label for="rename-chapter-title">Rename chapter</label>' +
+        '<input id="rename-chapter-title" type="text" value="' + esc(chapter.title) + '" required autofocus />' +
+        '<div class="btn-row">' +
+        '<button type="submit" class="primary">Save</button>' +
+        '<button type="button" onclick="toggleRenameChapterForm(null, \'' + bookId + '\')">Cancel</button>' +
+        "</div></form></div>"
+      );
+    }
     return (
       '<div class="card">' +
       '<a class="card-link" href="#/books/' + bookId + '/chapters/' + chapter.id + '"><h3>' + esc(chapter.title) + "</h3></a>" +
-      '<p class="card-meta">' + attemptCount + " attempt(s)</p>" +
+      '<p class="card-meta">' + pluralize(attemptCount, "attempt") + "</p>" +
       '<div class="btn-row">' +
-      '<button type="button" onclick="promptRenameChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Rename</button>' +
+      '<button type="button" onclick="toggleRenameChapterForm(\'' + chapter.id + '\', \'' + bookId + '\')">Rename</button>' +
       '<button type="button" class="danger" onclick="promptDeleteChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Delete</button>' +
       "</div>" +
       "</div>"
@@ -201,13 +275,13 @@ function renderChapterList(bookId) {
 
   const addForm = uiState.addChapterOpen
     ? '<div class="card">' +
+      '<form onsubmit="return handleAddChapter(event, \'' + bookId + '\')">' +
       '<label for="new-chapter-title">New chapter title</label>' +
-      '<input id="new-chapter-title" type="text" placeholder="e.g. Chapter 4: Alkenes" autofocus />' +
+      '<input id="new-chapter-title" type="text" placeholder="e.g. Chapter 4: Alkenes" required autofocus />' +
       '<div class="btn-row">' +
-      '<button type="button" class="primary" onclick="handleAddChapter(\'' + bookId + '\')">Add chapter</button>' +
+      '<button type="submit" class="primary">Add chapter</button>' +
       '<button type="button" onclick="toggleAddChapterForm(false, \'' + bookId + '\')">Cancel</button>' +
-      "</div>" +
-      "</div>"
+      "</div></form></div>"
     : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddChapterForm(true, \'' + bookId + '\')">+ Add chapter</button></div>';
 
   mount(
@@ -223,30 +297,39 @@ function toggleAddChapterForm(open, bookId) {
   renderChapterList(bookId);
 }
 
-function handleAddChapter(bookId) {
+function handleAddChapter(event, bookId) {
+  event.preventDefault();
   const input = document.getElementById("new-chapter-title");
   const title = input.value.trim();
-  if (!title) return;
+  if (!title) return false;
   addChapter(bookId, title);
   uiState.addChapterOpen = false;
   renderChapterList(bookId);
+  return false;
 }
 
-function promptRenameChapter(bookId, chapterId) {
-  const chapter = Store.chapters.find((c) => c.id === chapterId);
-  const title = prompt("Rename chapter", chapter.title);
-  if (title && title.trim()) {
-    renameChapter(chapterId, title);
-    renderChapterList(bookId);
-  }
+function toggleRenameChapterForm(chapterId, bookId) {
+  uiState.renameChapterId = chapterId;
+  renderChapterList(bookId);
+}
+
+function handleRenameChapter(event, bookId, chapterId) {
+  event.preventDefault();
+  const input = document.getElementById("rename-chapter-title");
+  const title = input.value.trim();
+  if (!title) return false;
+  renameChapter(chapterId, title);
+  uiState.renameChapterId = null;
+  renderChapterList(bookId);
+  return false;
 }
 
 function promptDeleteChapter(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const counts = chapterCascadeCounts(chapterId);
   const ok = confirm(
-    "Delete chapter '" + chapter.title + "' and its " + counts.attemptCount +
-    " attempt(s)? This cannot be undone."
+    "Delete chapter '" + chapter.title + "' and its " + pluralize(counts.attemptCount, "attempt") +
+    "? This cannot be undone."
   );
   if (ok) {
     deleteChapter(chapterId);
@@ -260,15 +343,15 @@ function renderChapterDetail(bookId, chapterId) {
   const book = Store.books.find((b) => b.id === bookId);
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   if (!book || !chapter) return mount('<p>Not found. <a href="#/books">Go back</a>.</p>');
+  document.title = chapter.title + " — AnswerPaper";
 
   const attempts = attemptsForChapter(Store, chapterId).slice().reverse();
   const isFirstTime = chapter.questionOrder.length === 0;
 
   const rows = attempts.map((attempt) => {
-    const graded = attempt.responses.filter((r) => r.correct !== null);
-    const correctCount = graded.filter((r) => r.correct === true).length;
-    const score = graded.length ? Math.round((correctCount / graded.length) * 100) + "%" : "Ungraded";
-    const needsReview = graded.length < attempt.responses.length;
+    const attemptScore = computeAttemptScore(Store, attempt);
+    const score = formatScoreLabel(attemptScore);
+    const needsReview = attemptScore.trulyUngradedCount > 0;
     return (
       "<tr>" +
       "<td>" + formatDate(attempt.finishedAt) + "</td>" +
@@ -292,12 +375,128 @@ function renderChapterDetail(bookId, chapterId) {
       '<a class="btn" href="#/books/' + bookId + '/chapters/' + chapterId + '/print">Print blank paper</a>') +
     "</div>" +
     (chartSeries.length ? '<div class="card"><h2>Score over time</h2>' + renderScoreLineChart(chartSeries) + "</div>" : "") +
+    renderQuestionManageCard(bookId, chapterId, chapter) +
     '<div class="card"><h2>Past attempts</h2>' +
     (attempts.length
       ? '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Score</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
       : "<p>No attempts yet.</p>") +
     "</div>"
   );
+}
+
+/* ---------- Manage chapter questions ---------- */
+
+const DEFAULT_NEW_QUESTION_CONFIG = { optionLabels: ["A", "B", "C", "D"], multiSelect: false };
+
+function describeQuestion(question) {
+  if (question.type === "truefalse") return "True / False";
+  return question.config.optionLabels.length + " options" + (question.config.multiSelect ? ", multi-select" : "");
+}
+
+function renderQuestionManageCard(bookId, chapterId, chapter) {
+  const questions = chapter.questionOrder.map((qid) => Store.questions.find((q) => q.id === qid)).filter(Boolean);
+
+  const rows = questions.map((q, idx) => {
+    const locked = q.correctAnswer !== null && q.correctAnswer !== undefined;
+    return (
+      "<tr>" +
+      "<td>Question " + (idx + 1) + "</td>" +
+      "<td>" + esc(describeQuestion(q)) + "</td>" +
+      "<td>" + (locked ? '<span class="status-correct">Answer set</span>' : '<span class="status-ungraded">No answer yet</span>') + "</td>" +
+      "<td class=\"btn-row\">" +
+      (idx > 0 ? '<button type="button" onclick="moveQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\',-1)" aria-label="Move question ' + (idx + 1) + ' up">&uarr;</button>' : "") +
+      (idx < questions.length - 1 ? '<button type="button" onclick="moveQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\',1)" aria-label="Move question ' + (idx + 1) + ' down">&darr;</button>' : "") +
+      '<button type="button" class="danger" onclick="promptDeleteQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\')">Delete</button>' +
+      "</td></tr>"
+    );
+  }).join("");
+
+  const addForm = uiState.addQuestionOpen ? renderAddQuestionForm(bookId, chapterId) :
+    '<div class="btn-row"><button type="button" onclick="toggleAddQuestionForm(true, \'' + bookId + '\', \'' + chapterId + '\')">+ Add question</button></div>';
+
+  return (
+    '<div class="card">' +
+    "<h2>" + pluralize(questions.length, "Question") + "</h2>" +
+    (questions.length
+      ? '<div class="table-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Correct answer</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
+      : "<p>No questions yet.</p>") +
+    addForm +
+    "</div>"
+  );
+}
+
+function renderAddQuestionForm(bookId, chapterId) {
+  const draft = uiState.addQuestionDraft || (uiState.addQuestionDraft = { type: "mcq", config: Object.assign({}, DEFAULT_NEW_QUESTION_CONFIG) });
+  const configHtml = draft.type === "mcq"
+    ? '<label for="new-q-opt-count">Number of options</label>' +
+      '<input id="new-q-opt-count" type="number" min="2" max="8" value="' + draft.config.optionLabels.length + '" onchange="manageAddQuestionUpdateOptionCount(this.value)" />' +
+      '<div class="choice-row"><input id="new-q-multi-select" type="checkbox" ' + (draft.config.multiSelect ? "checked" : "") +
+      ' onchange="manageAddQuestionUpdateMultiSelect(this.checked)" /><label for="new-q-multi-select" style="margin:0">Allow selecting more than one option</label></div>'
+    : "";
+
+  return (
+    '<form class="add-question-form" onsubmit="return handleAddQuestion(event, \'' + bookId + '\', \'' + chapterId + '\')">' +
+    '<label for="new-q-type">Question type</label>' +
+    '<select id="new-q-type" onchange="manageAddQuestionUpdateType(this.value)">' +
+    '<option value="mcq" ' + (draft.type === "mcq" ? "selected" : "") + '>Multiple choice</option>' +
+    '<option value="truefalse" ' + (draft.type === "truefalse" ? "selected" : "") + '>True / False</option>' +
+    "</select>" +
+    configHtml +
+    '<p class="card-meta">The correct answer is set later, from the Review screen of an attempt that includes this question.</p>' +
+    '<div class="btn-row">' +
+    '<button type="submit" class="primary">Add question</button>' +
+    '<button type="button" onclick="toggleAddQuestionForm(false, \'' + bookId + '\', \'' + chapterId + '\')">Cancel</button>' +
+    "</div></form>"
+  );
+}
+
+function toggleAddQuestionForm(open, bookId, chapterId) {
+  uiState.addQuestionOpen = open;
+  uiState.addQuestionDraft = open ? { type: "mcq", config: Object.assign({}, DEFAULT_NEW_QUESTION_CONFIG) } : null;
+  renderChapterDetail(bookId, chapterId);
+}
+
+function manageAddQuestionUpdateType(type) {
+  uiState.addQuestionDraft.type = type;
+  uiState.addQuestionDraft.config = type === "mcq" ? Object.assign({}, DEFAULT_NEW_QUESTION_CONFIG) : {};
+}
+
+function manageAddQuestionUpdateOptionCount(value) {
+  const n = Math.max(2, Math.min(8, parseInt(value, 10) || 4));
+  uiState.addQuestionDraft.config.optionLabels = "ABCDEFGH".split("").slice(0, n);
+}
+
+function manageAddQuestionUpdateMultiSelect(checked) {
+  uiState.addQuestionDraft.config.multiSelect = checked;
+}
+
+function handleAddQuestion(event, bookId, chapterId) {
+  event.preventDefault();
+  const draft = uiState.addQuestionDraft;
+  addQuestionToChapter(chapterId, draft.type, Object.assign({}, draft.config, draft.config.optionLabels ? { optionLabels: draft.config.optionLabels.slice() } : {}));
+  uiState.addQuestionOpen = false;
+  uiState.addQuestionDraft = null;
+  renderChapterDetail(bookId, chapterId);
+  return false;
+}
+
+function moveQuestion(bookId, chapterId, questionId, direction) {
+  reorderQuestion(chapterId, questionId, direction);
+  renderChapterDetail(bookId, chapterId);
+}
+
+function promptDeleteQuestion(bookId, chapterId, questionId) {
+  const chapter = Store.chapters.find((c) => c.id === chapterId);
+  const idx = chapter.questionOrder.indexOf(questionId);
+  const counts = questionCascadeCounts(chapterId, questionId);
+  const ok = confirm(
+    "Delete question " + (idx + 1) + "? This removes it from " + pluralize(counts.attemptCount, "past attempt") +
+    " too, and cannot be undone."
+  );
+  if (ok) {
+    deleteQuestion(chapterId, questionId);
+    renderChapterDetail(bookId, chapterId);
+  }
 }
 
 function renderScoreLineChart(series) {
@@ -317,31 +516,55 @@ function renderScoreLineChart(series) {
 
   const points = series.map((s, i) => ({ x: x(i), y: y(s.scorePercent || 0), s }));
   const path = points.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" ");
+  const showAllLabels = n <= 6;
 
-  const circles = points.map((p) => {
+  const circles = points.map((p, i) => {
     const label = p.s.scorePercent === null ? "Ungraded" : p.s.scorePercent + "%";
+    const isEndpoint = i === 0 || i === n - 1;
+    const valueLabel = p.s.scorePercent === null ? "" :
+      (showAllLabels || isEndpoint
+        ? '<text class="chart-label" x="' + p.x.toFixed(1) + '" y="' + (p.y - 10).toFixed(1) + '" text-anchor="middle">' + p.s.scorePercent + "%</text>"
+        : "");
     return (
-      '<circle class="chart-point" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4">' +
+      '<circle class="chart-point" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" tabindex="0">' +
       "<title>" + formatDate(p.s.date) + ": " + label + "</title>" +
-      "</circle>"
+      "</circle>" + valueLabel
     );
   }).join("");
 
-  const last = points[points.length - 1];
-  const lastLabel = series[series.length - 1].scorePercent === null ? "" :
-    '<text class="chart-label" x="' + last.x.toFixed(1) + '" y="' + (last.y - 10).toFixed(1) + '" text-anchor="middle">' +
-    series[series.length - 1].scorePercent + "%</text>";
+  const dateLabels = n > 1
+    ? '<text class="chart-date-label" x="' + points[0].x.toFixed(1) + '" y="' + (height - 6) + '" text-anchor="start">' + formatDateShort(series[0].date) + "</text>" +
+      '<text class="chart-date-label" x="' + points[n - 1].x.toFixed(1) + '" y="' + (height - 6) + '" text-anchor="end">' + formatDateShort(series[n - 1].date) + "</text>"
+    : "";
 
   return (
     '<div class="chart-wrap"><svg viewBox="0 0 ' + width + " " + height + '" role="img" aria-label="Chapter score percentage over time">' +
-    gridLines + '<path class="chart-line" d="' + path + '"></path>' + circles + lastLabel +
+    gridLines + '<path class="chart-line" d="' + path + '"></path>' + circles + dateLabels +
     "</svg></div>"
   );
+}
+
+function formatDateShort(iso) {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 /* ---------- New Attempt / Retake wizard ---------- */
 
 let Wizard = null;
+
+function wizardHasProgress() {
+  if (!Wizard) return false;
+  if (Wizard.mode === "new") return Wizard.stage !== "count" && (Wizard.draftQuestions.length > 0 || Wizard.index > 0);
+  return Wizard.index > 0 || Object.keys(Wizard.responses).length > 0 || Wizard.stage !== "questions";
+}
+
+function cancelWizard() {
+  if (wizardHasProgress() && !confirm("Cancel this attempt? Your progress on it will be lost.")) return;
+  const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
+  Wizard = null;
+  navigate("/books/" + bookId + "/chapters/" + chapterId);
+  render();
+}
 
 const DEFAULT_MCQ_CONFIG = { optionLabels: ["A", "B", "C", "D"], multiSelect: false };
 
@@ -349,6 +572,7 @@ function renderAttemptWizard(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   if (!chapter) return mount("<p>Chapter not found.</p>");
   const isFirstTime = chapter.questionOrder.length === 0;
+  document.title = (isFirstTime ? "New attempt: " : "Retake: ") + chapter.title + " — AnswerPaper";
 
   if (!Wizard || Wizard.chapterId !== chapterId || Wizard.mode !== (isFirstTime ? "new" : "retake")) {
     if (isFirstTime) {
@@ -402,7 +626,8 @@ function renderNewWizard(bookId, chapterId, chapter) {
       '<div class="card">' +
       '<label for="q-count">How many questions in this chapter?</label>' +
       '<input id="q-count" type="number" min="1" max="200" value="20" />' +
-      '<div class="btn-row"><button type="button" class="primary" onclick="startNewWizardQuestions()">Begin</button></div>' +
+      '<div class="btn-row"><button type="button" class="primary" onclick="startNewWizardQuestions()">Begin</button>' +
+      '<button type="button" onclick="cancelWizard()">Cancel</button></div>' +
       "</div>" +
       '<p class="wizard-unsure-hint">Not sure how many yet? ' +
       '<button type="button" class="link-inline" onclick="startNewWizardUnbounded()">Add questions one at a time instead</button>, ' +
@@ -429,7 +654,8 @@ function renderNewWizard(bookId, chapterId, chapter) {
       '<label for="opt-count">Number of options</label>' +
       '<input id="opt-count" type="number" min="2" max="8" value="' + config.optionLabels.length + '" onchange="wizardUpdateOptionCount(this.value)" />' +
       '<div class="choice-row"><input id="multi-select" type="checkbox" ' + (config.multiSelect ? "checked" : "") +
-      ' onchange="wizardUpdateMultiSelect(this.checked)" /><label for="multi-select" style="margin:0">Allow selecting more than one option</label></div>';
+      ' onchange="wizardUpdateMultiSelect(this.checked)" /><label for="multi-select" style="margin:0">Allow selecting more than one option</label></div>' +
+      (i > 0 ? '<p class="card-meta">Same as previous question &mdash; change above if this one is different.</p>' : "");
   }
 
   const buttonsHtml = unbounded
@@ -456,6 +682,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
     (i > 0 ? '<button type="button" onclick="wizardGoBack()">Previous question</button>' : "") +
     (unbounded && i > 0 ? '<button type="button" class="danger" onclick="wizardRemoveAndFinish()">Remove this question &amp; finish</button>' : "") +
     buttonsHtml +
+    '<button type="button" onclick="cancelWizard()">Cancel attempt</button>' +
     "</div>" +
     "</div>"
   );
@@ -586,7 +813,7 @@ function renderNewFlaggedReview(bookId, chapterId, chapter) {
   mount(
     "<h1>" + esc(chapter.title) + "</h1>" +
     '<div class="card">' +
-    "<h2>" + flaggedIdx.length + " question(s) flagged for review</h2>" +
+    "<h2>" + pluralize(flaggedIdx.length, "question") + " flagged for review</h2>" +
     "<p>Take another look before submitting, or submit as-is.</p>" +
     '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
     '<div class="btn-row"><button type="button" class="primary" onclick="finishNewAttempt()">Submit attempt</button></div>' +
@@ -658,7 +885,8 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
     '<div class="btn-row">' +
     (i > 0 ? '<button type="button" onclick="retakeGoBack()">Previous question</button>' : "") +
     '<button type="button" class="primary" onclick="retakeCommitQuestion(\'' + questionId + '\',' + isLast + ')">' +
-    (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
+    (isLast ? "Finish attempt" : "Next question") + "</button>" +
+    '<button type="button" onclick="cancelWizard()">Cancel attempt</button></div>' +
     "</div>"
   );
 }
@@ -718,7 +946,7 @@ function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
   mount(
     "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
     '<div class="card">' +
-    "<h2>" + flaggedQids.length + " question(s) flagged for review</h2>" +
+    "<h2>" + pluralize(flaggedQids.length, "question") + " flagged for review</h2>" +
     "<p>Take another look before submitting, or submit as-is.</p>" +
     '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
     '<div class="btn-row"><button type="button" class="primary" onclick="finishRetakeAttempt()">Submit attempt</button></div>' +
@@ -771,42 +999,55 @@ function saveRetakeReviewedQuestion() {
 
 /* ---------- Review / Grade ---------- */
 
+let scrollToQuestionNum = null;
+
 function renderReview(bookId, chapterId, attemptId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const attempt = Store.attempts.find((a) => a.id === attemptId);
   if (!chapter || !attempt) return mount("<p>Not found.</p>");
+  document.title = "Review: " + chapter.title + " — AnswerPaper";
+
+  const gradedCount = attempt.responses.filter((r) => {
+    const q = Store.questions.find((qq) => qq.id === r.questionId);
+    return q && q.correctAnswer !== null && q.correctAnswer !== undefined;
+  }).length;
+  const correctCount = attempt.responses.filter((r) => r.correct === true).length;
 
   const rows = attempt.responses.map((response, idx) => {
     const question = Store.questions.find((q) => q.id === response.questionId);
     const chosenLabel = response.chosen.length
       ? response.chosen.map(formatAnswerValue).join(", ") + (response.flagged ? " (flagged)" : "")
       : (response.flagged ? "Flagged — no answer given" : "(no answer)");
+    const isLocked = question.correctAnswer !== null && question.correctAnswer !== undefined;
 
     let correctInput = "";
     if (question.type === "mcq") {
       const inputType = question.config.multiSelect ? "checkbox" : "radio";
       correctInput = question.config.optionLabels.map((label) => {
         const checked = question.correctAnswer && question.correctAnswer.includes(label);
-        return '<div class="choice-row"><input type="' + inputType + '" name="correct-' + question.id + '" id="correct-' + question.id + '-' + label + '" value="' + label + '" ' + (checked ? "checked" : "") + ' />' +
+        return '<div class="choice-row"><input type="' + inputType + '" name="correct-' + question.id + '" id="correct-' + question.id + '-' + label + '" value="' + label + '" ' + (checked ? "checked" : "") +
+          ' onchange="handleCorrectAnswerChange(\'' + question.id + '\',\'' + bookId + '\',\'' + chapterId + '\',\'' + attemptId + '\')" />' +
           '<label for="correct-' + question.id + '-' + label + '" style="margin:0">' + label + "</label></div>";
       }).join("");
     } else {
       const trueChecked = question.correctAnswer && question.correctAnswer.includes("true");
       const falseChecked = question.correctAnswer && question.correctAnswer.includes("false");
+      const onchange = ' onchange="handleCorrectAnswerChange(\'' + question.id + '\',\'' + bookId + '\',\'' + chapterId + '\',\'' + attemptId + '\')"';
       correctInput =
-        '<div class="choice-row"><input type="radio" name="correct-' + question.id + '" id="correct-' + question.id + '-true" value="true" ' + (trueChecked ? "checked" : "") + ' /><label for="correct-' + question.id + '-true" style="margin:0">True</label></div>' +
-        '<div class="choice-row"><input type="radio" name="correct-' + question.id + '" id="correct-' + question.id + '-false" value="false" ' + (falseChecked ? "checked" : "") + ' /><label for="correct-' + question.id + '-false" style="margin:0">False</label></div>';
+        '<div class="choice-row"><input type="radio" name="correct-' + question.id + '" id="correct-' + question.id + '-true" value="true" ' + (trueChecked ? "checked" : "") + onchange + ' /><label for="correct-' + question.id + '-true" style="margin:0">True</label></div>' +
+        '<div class="choice-row"><input type="radio" name="correct-' + question.id + '" id="correct-' + question.id + '-false" value="false" ' + (falseChecked ? "checked" : "") + onchange + ' /><label for="correct-' + question.id + '-false" style="margin:0">False</label></div>';
     }
 
-    const statusClass = response.correct === null ? "status-ungraded" : response.correct ? "status-correct" : "status-incorrect";
-    const statusText = response.correct === null ? "Ungraded" : response.correct ? "Correct" : "Incorrect";
+    const unanswered = response.chosen.length === 0;
+    const statusClass = !isLocked ? "status-ungraded" : unanswered ? "status-incorrect" : response.correct ? "status-correct" : "status-incorrect";
+    const statusText = !isLocked ? "Not yet graded" : unanswered ? "Unanswered" : response.correct ? "Correct" : "Incorrect";
 
     return (
-      '<div class="card">' +
+      '<div class="card" id="q-card-' + (idx + 1) + '">' +
       "<h3>Question " + (idx + 1) + '</h3>' +
       "<p>Your answer: <strong>" + esc(chosenLabel) + "</strong> &mdash; <span class=\"" + statusClass + "\">" + statusText + "</span></p>" +
       '<fieldset><legend>Correct answer</legend>' + correctInput + "</fieldset>" +
-      '<button type="button" onclick="saveCorrectAnswer(\'' + question.id + '\',\'' + bookId + '\',\'' + chapterId + '\',\'' + attemptId + '\')">Save correct answer</button>' +
+      '<p class="save-flash" id="save-flash-' + question.id + '" aria-live="polite">' + (isLocked ? "Saved" : "") + "</p>" +
       "</div>"
     );
   }).join("");
@@ -814,21 +1055,30 @@ function renderReview(bookId, chapterId, attemptId) {
   mount(
     '<p><a href="#/books/' + bookId + '/chapters/' + chapterId + '">&larr; ' + esc(chapter.title) + "</a></p>" +
     "<h1>Review &amp; grade</h1>" +
-    "<p>Lock in the correct answer for each question. Editing a correct answer later will re-grade every past attempt for that question.</p>" +
+    '<p class="wizard-progress">Graded ' + gradedCount + " of " + attempt.responses.length + " &middot; " + correctCount + " correct so far</p>" +
+    "<p>Pick the correct answer for each question — it saves immediately. Editing a correct answer later will re-grade every past attempt for that question.</p>" +
     rows
   );
+
+  if (scrollToQuestionNum !== null) {
+    const target = document.getElementById("q-card-" + scrollToQuestionNum);
+    scrollToQuestionNum = null;
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("highlight-card");
+      setTimeout(() => target.classList.remove("highlight-card"), 2000);
+    }
+  }
 }
 
-function saveCorrectAnswer(questionId, bookId, chapterId, attemptId) {
-  const question = Store.questions.find((q) => q.id === questionId);
+function handleCorrectAnswerChange(questionId, bookId, chapterId, attemptId) {
   const inputs = document.querySelectorAll('input[name="correct-' + questionId + '"]:checked');
   const values = Array.from(inputs).map((el) => el.value);
-  if (!values.length) {
-    alert("Pick the correct answer before saving.");
-    return;
-  }
+  if (!values.length) return;
   applyCorrectAnswer(questionId, values);
   renderReview(bookId, chapterId, attemptId);
+  const flash = document.getElementById("save-flash-" + questionId);
+  if (flash) flash.textContent = "Saved ✓";
 }
 
 /* ---------- Trends ---------- */
@@ -836,6 +1086,7 @@ function saveCorrectAnswer(questionId, bookId, chapterId, attemptId) {
 function renderTrends(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   if (!chapter) return mount("<p>Not found.</p>");
+  document.title = "Trends: " + chapter.title + " — AnswerPaper";
 
   const chapterSeries = computeChapterTrend(Store, chapterId);
   const weakest = weakestQuestions(Store, chapterId, 5);
@@ -844,7 +1095,7 @@ function renderTrends(bookId, chapterId) {
   );
 
   const weakestRows = weakest.map((w) =>
-    "<tr><td>Question " + w.questionNumber + "</td><td>" + Math.round(w.incorrectRate * 100) + "%</td><td>" + w.gradedCount + "</td></tr>"
+    "<tr><td><button type=\"button\" class=\"link-inline\" onclick=\"jumpToWeakestQuestion('" + bookId + "','" + chapterId + "'," + w.questionNumber + ")\">Question " + w.questionNumber + "</button></td><td>" + Math.round(w.incorrectRate * 100) + "%</td><td>" + w.gradedCount + "</td></tr>"
   ).join("");
 
   const questionRows = chapter.questionOrder.map((qid, idx) => {
@@ -874,11 +1125,21 @@ function renderTrends(bookId, chapterId) {
   );
 }
 
+function jumpToWeakestQuestion(bookId, chapterId, questionNumber) {
+  const attempts = attemptsForChapter(Store, chapterId);
+  if (!attempts.length) return;
+  const latest = attempts[attempts.length - 1];
+  scrollToQuestionNum = questionNumber;
+  navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + latest.id + "/review");
+  render();
+}
+
 /* ---------- Print trigger ---------- */
 
 function renderPrintTrigger(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   if (!chapter) return mount("<p>Not found.</p>");
+  document.title = "Print: " + chapter.title + " — AnswerPaper";
   mount(
     '<p><a href="#/books/' + bookId + '/chapters/' + chapterId + '">&larr; ' + esc(chapter.title) + "</a></p>" +
     "<h1>Print: " + esc(chapter.title) + "</h1>" +
