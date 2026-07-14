@@ -263,6 +263,7 @@ button.link-inline:hover {
   display: grid;
   gap: var(--space-3);
   grid-template-columns: 1fr;
+  margin-top: var(--space-3);
 }
 
 @media (min-width: 640px) {
