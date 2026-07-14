@@ -1,10 +1,6 @@
-/* Screen rendering. Reads Store, writes into #main. Full re-render on every change. */
+/* Screen rendering. Reads Store, writes into #main via Preact. Full re-render on every change. */
 
-function esc(str) {
-  const div = document.createElement("div");
-  div.textContent = String(str);
-  return div.innerHTML;
-}
+import { html, render as preactRender } from "./vendor/htm-preact.js";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -22,8 +18,8 @@ function formatChosenSummary(chosen) {
   return chosen.length ? chosen.map(formatAnswerValue).join(", ") : "";
 }
 
-function mount(html) {
-  document.getElementById("main").innerHTML = html;
+function mount(vnode) {
+  preactRender(vnode, document.getElementById("main"));
 }
 
 function render() {
@@ -48,7 +44,7 @@ function render() {
   if (parts[4] === "print") {
     return renderPrintTrigger(parts[1], parts[3]);
   }
-  mount('<p>Page not found. <a href="#/">Go home</a>.</p>');
+  mount(html`<p>Page not found. <a href="#/">Go home</a>.</p>`);
 }
 
 /* ---------- Home ---------- */
@@ -61,30 +57,30 @@ function renderHome() {
 
   const rows = attempts.map((attempt) => {
     const chapter = Store.chapters.find((c) => c.id === attempt.chapterId);
-    if (!chapter) return "";
+    if (!chapter) return null;
     const book = Store.books.find((b) => b.id === chapter.bookId);
     const graded = attempt.responses.filter((r) => r.correct !== null);
     const correctCount = graded.filter((r) => r.correct === true).length;
     const score = graded.length ? Math.round((correctCount / graded.length) * 100) + "%" : "Ungraded";
-    return (
-      '<tr>' +
-      '<td><a href="#/books/' + book.id + '/chapters/' + chapter.id + '">' + esc(book.title) + " &rsaquo; " + esc(chapter.title) + '</a></td>' +
-      "<td>" + formatDate(attempt.finishedAt) + "</td>" +
-      "<td>" + score + "</td>" +
-      "</tr>"
-    );
-  }).join("");
+    return html`
+      <tr key=${attempt.id}>
+        <td><a href=${"#/books/" + book.id + "/chapters/" + chapter.id}>${book.title} › ${chapter.title}</a></td>
+        <td>${formatDate(attempt.finishedAt)}</td>
+        <td>${score}</td>
+      </tr>
+    `;
+  });
 
-  mount(
-    '<h1>Home</h1>' +
-    '<div class="card">' +
-    "<h2>Recent activity</h2>" +
-    (attempts.length
-      ? '<div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Date</th><th>Score</th></tr></thead><tbody>' + rows + "</tbody></table></div>"
-      : "<p>No attempts yet. <a href=\"#/books\">Start with your books</a>.</p>") +
-    "</div>" +
-    '<div class="btn-row"><a class="btn primary" href="#/books">View all books</a></div>'
-  );
+  mount(html`
+    <h1>Home</h1>
+    <div class="card">
+      <h2>Recent activity</h2>
+      ${attempts.length
+        ? html`<div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Date</th><th>Score</th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : html`<p>No attempts yet. <a href="#/books">Start with your books</a>.</p>`}
+    </div>
+    <div class="btn-row"><a class="btn primary" href="#/books">View all books</a></div>
+  `);
 }
 
 /* ---------- Books ---------- */
@@ -94,34 +90,36 @@ let uiState = { addBookOpen: false, addChapterOpen: false };
 function renderBookList() {
   const cards = Store.books.map((book) => {
     const chapterCount = Store.chapters.filter((c) => c.bookId === book.id).length;
-    return (
-      '<div class="card">' +
-      '<a class="card-link" href="#/books/' + book.id + '/chapters"><h3>' + esc(book.title) + "</h3></a>" +
-      '<p class="card-meta">' + chapterCount + " chapter(s)</p>" +
-      '<div class="btn-row">' +
-      '<button type="button" onclick="promptRenameBook(\'' + book.id + '\')">Rename</button>' +
-      '<button type="button" class="danger" onclick="promptDeleteBook(\'' + book.id + '\')">Delete</button>' +
-      "</div>" +
-      "</div>"
-    );
-  }).join("");
+    return html`
+      <div class="card" key=${book.id}>
+        <a class="card-link" href=${"#/books/" + book.id + "/chapters"}><h3>${book.title}</h3></a>
+        <p class="card-meta">${chapterCount} chapter(s)</p>
+        <div class="btn-row">
+          <button type="button" onClick=${() => promptRenameBook(book.id)}>Rename</button>
+          <button type="button" class="danger" onClick=${() => promptDeleteBook(book.id)}>Delete</button>
+        </div>
+      </div>
+    `;
+  });
 
   const addForm = uiState.addBookOpen
-    ? '<div class="card">' +
-      '<label for="new-book-title">New book title</label>' +
-      '<input id="new-book-title" type="text" placeholder="e.g. Organic Chemistry" autofocus />' +
-      '<div class="btn-row">' +
-      '<button type="button" class="primary" onclick="handleAddBook()">Add book</button>' +
-      '<button type="button" onclick="toggleAddBookForm(false)">Cancel</button>' +
-      "</div>" +
-      "</div>"
-    : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddBookForm(true)">+ Add book</button></div>';
+    ? html`
+      <div class="card">
+        <label for="new-book-title">New book title</label>
+        <input id="new-book-title" type="text" placeholder="e.g. Organic Chemistry" autofocus />
+        <div class="btn-row">
+          <button type="button" class="primary" onClick=${handleAddBook}>Add book</button>
+          <button type="button" onClick=${() => toggleAddBookForm(false)}>Cancel</button>
+        </div>
+      </div>
+    `
+    : html`<div class="btn-row"><button type="button" class="primary" onClick=${() => toggleAddBookForm(true)}>+ Add book</button></div>`;
 
-  mount(
-    "<h1>Books</h1>" +
-    addForm +
-    '<div class="card-list">' + (cards || '<div class="card"><p>No books yet.</p></div>') + "</div>"
-  );
+  mount(html`
+    <h1>Books</h1>
+    ${addForm}
+    <div class="card-list">${cards.length ? cards : html`<div class="card"><p>No books yet.</p></div>`}</div>
+  `);
 }
 
 function toggleAddBookForm(open) {
@@ -164,40 +162,42 @@ function promptDeleteBook(bookId) {
 
 function renderChapterList(bookId) {
   const book = Store.books.find((b) => b.id === bookId);
-  if (!book) return mount('<p>Book not found. <a href="#/books">Go back</a>.</p>');
+  if (!book) return mount(html`<p>Book not found. <a href="#/books">Go back</a>.</p>`);
 
   const chapters = Store.chapters.filter((c) => c.bookId === bookId);
   const cards = chapters.map((chapter) => {
     const attemptCount = Store.attempts.filter((a) => a.chapterId === chapter.id).length;
-    return (
-      '<div class="card">' +
-      '<a class="card-link" href="#/books/' + bookId + '/chapters/' + chapter.id + '"><h3>' + esc(chapter.title) + "</h3></a>" +
-      '<p class="card-meta">' + attemptCount + " attempt(s)</p>" +
-      '<div class="btn-row">' +
-      '<button type="button" onclick="promptRenameChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Rename</button>' +
-      '<button type="button" class="danger" onclick="promptDeleteChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Delete</button>' +
-      "</div>" +
-      "</div>"
-    );
-  }).join("");
+    return html`
+      <div class="card" key=${chapter.id}>
+        <a class="card-link" href=${"#/books/" + bookId + "/chapters/" + chapter.id}><h3>${chapter.title}</h3></a>
+        <p class="card-meta">${attemptCount} attempt(s)</p>
+        <div class="btn-row">
+          <button type="button" onClick=${() => promptRenameChapter(bookId, chapter.id)}>Rename</button>
+          <button type="button" class="danger" onClick=${() => promptDeleteChapter(bookId, chapter.id)}>Delete</button>
+        </div>
+      </div>
+    `;
+  });
 
   const addForm = uiState.addChapterOpen
-    ? '<div class="card">' +
-      '<label for="new-chapter-title">New chapter title</label>' +
-      '<input id="new-chapter-title" type="text" placeholder="e.g. Chapter 4: Alkenes" autofocus />' +
-      '<div class="btn-row">' +
-      '<button type="button" class="primary" onclick="handleAddChapter(\'' + bookId + '\')">Add chapter</button>' +
-      '<button type="button" onclick="toggleAddChapterForm(false, \'' + bookId + '\')">Cancel</button>' +
-      "</div>" +
-      "</div>"
-    : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddChapterForm(true, \'' + bookId + '\')">+ Add chapter</button></div>';
+    ? html`
+      <div class="card">
+        <label for="new-chapter-title">New chapter title</label>
+        <input id="new-chapter-title" type="text" placeholder="e.g. Chapter 4: Alkenes" autofocus />
+        <div class="btn-row">
+          <button type="button" class="primary" onClick=${() => handleAddChapter(bookId)}>Add chapter</button>
+          <button type="button" onClick=${() => toggleAddChapterForm(false, bookId)}>Cancel</button>
+        </div>
+      </div>
+    `
+    : html`<div class="btn-row"><button type="button" class="primary" onClick=${() => toggleAddChapterForm(true, bookId)}>+ Add chapter</button></div>`;
 
-  mount(
-    '<p><a href="#/books">&larr; All books</a></p>' +
-    "<h1>" + esc(book.title) + "</h1>" +
-    addForm +
-    '<div class="card-list">' + (cards || '<div class="card"><p>No chapters yet.</p></div>') + "</div>"
-  );
+  mount(html`
+    <p><a href="#/books">← All books</a></p>
+    <h1>${book.title}</h1>
+    ${addForm}
+    <div class="card-list">${cards.length ? cards : html`<div class="card"><p>No chapters yet.</p></div>`}</div>
+  `);
 }
 
 function toggleAddChapterForm(open, bookId) {
@@ -241,7 +241,7 @@ function promptDeleteChapter(bookId, chapterId) {
 function renderChapterDetail(bookId, chapterId) {
   const book = Store.books.find((b) => b.id === bookId);
   const chapter = Store.chapters.find((c) => c.id === chapterId);
-  if (!book || !chapter) return mount('<p>Not found. <a href="#/books">Go back</a>.</p>');
+  if (!book || !chapter) return mount(html`<p>Not found. <a href="#/books">Go back</a>.</p>`);
 
   const attempts = attemptsForChapter(Store, chapterId).slice().reverse();
   const isFirstTime = chapter.questionOrder.length === 0;
@@ -251,35 +251,35 @@ function renderChapterDetail(bookId, chapterId) {
     const correctCount = graded.filter((r) => r.correct === true).length;
     const score = graded.length ? Math.round((correctCount / graded.length) * 100) + "%" : "Ungraded";
     const needsReview = graded.length < attempt.responses.length;
-    return (
-      "<tr>" +
-      "<td>" + formatDate(attempt.finishedAt) + "</td>" +
-      "<td>" + score + "</td>" +
-      '<td><a href="#/books/' + bookId + '/chapters/' + chapterId + '/attempt/' + attempt.id + '/review">' +
-      (needsReview ? "Review / grade" : "View / edit answers") + "</a></td>" +
-      "</tr>"
-    );
-  }).join("");
+    return html`
+      <tr key=${attempt.id}>
+        <td>${formatDate(attempt.finishedAt)}</td>
+        <td>${score}</td>
+        <td><a href=${"#/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review"}>${needsReview ? "Review / grade" : "View / edit answers"}</a></td>
+      </tr>
+    `;
+  });
 
   const chartSeries = computeChapterTrend(Store, chapterId);
 
-  mount(
-    '<p><a href="#/books/' + bookId + '/chapters">&larr; ' + esc(book.title) + "</a></p>" +
-    "<h1>" + esc(chapter.title) + "</h1>" +
-    '<div class="btn-row">' +
-    '<a class="btn primary" href="#/books/' + bookId + '/chapters/' + chapterId + '/attempt">' +
-    (isFirstTime ? "Start attempt" : "Retake") + "</a>" +
-    (isFirstTime ? "" :
-      '<a class="btn" href="#/books/' + bookId + '/chapters/' + chapterId + '/trends">View trends</a>' +
-      '<a class="btn" href="#/books/' + bookId + '/chapters/' + chapterId + '/print">Print blank paper</a>') +
-    "</div>" +
-    (chartSeries.length ? '<div class="card"><h2>Score over time</h2>' + renderScoreLineChart(chartSeries) + "</div>" : "") +
-    '<div class="card"><h2>Past attempts</h2>' +
-    (attempts.length
-      ? '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Score</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
-      : "<p>No attempts yet.</p>") +
-    "</div>"
-  );
+  mount(html`
+    <p><a href=${"#/books/" + bookId + "/chapters"}>← ${book.title}</a></p>
+    <h1>${chapter.title}</h1>
+    <div class="btn-row">
+      <a class="btn primary" href=${"#/books/" + bookId + "/chapters/" + chapterId + "/attempt"}>${isFirstTime ? "Start attempt" : "Retake"}</a>
+      ${isFirstTime ? null : html`
+        <a class="btn" href=${"#/books/" + bookId + "/chapters/" + chapterId + "/trends"}>View trends</a>
+        <a class="btn" href=${"#/books/" + bookId + "/chapters/" + chapterId + "/print"}>Print blank paper</a>
+      `}
+    </div>
+    ${chartSeries.length ? html`<div class="card"><h2>Score over time</h2>${renderScoreLineChart(chartSeries)}</div>` : null}
+    <div class="card">
+      <h2>Past attempts</h2>
+      ${attempts.length
+        ? html`<div class="table-wrap"><table><thead><tr><th>Date</th><th>Score</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : html`<p>No attempts yet.</p>`}
+    </div>
+  `);
 }
 
 function renderScoreLineChart(series) {
@@ -291,34 +291,41 @@ function renderScoreLineChart(series) {
 
   const gridLines = [0, 25, 50, 75, 100].map((pct) => {
     const gy = y(pct);
-    return (
-      '<line class="chart-grid" x1="' + padL + '" y1="' + gy + '" x2="' + (width - padR) + '" y2="' + gy + '"></line>' +
-      '<text x="' + (padL - 8) + '" y="' + (gy + 3) + '" text-anchor="end">' + pct + "</text>"
-    );
-  }).join("");
+    return html`
+      <g key=${pct}>
+        <line class="chart-grid" x1=${padL} y1=${gy} x2=${width - padR} y2=${gy}></line>
+        <text x=${padL - 8} y=${gy + 3} text-anchor="end">${pct}</text>
+      </g>
+    `;
+  });
 
   const points = series.map((s, i) => ({ x: x(i), y: y(s.scorePercent || 0), s }));
   const path = points.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" ");
 
-  const circles = points.map((p) => {
+  const circles = points.map((p, i) => {
     const label = p.s.scorePercent === null ? "Ungraded" : p.s.scorePercent + "%";
-    return (
-      '<circle class="chart-point" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4">' +
-      "<title>" + formatDate(p.s.date) + ": " + label + "</title>" +
-      "</circle>"
-    );
-  }).join("");
+    return html`
+      <circle class="chart-point" key=${p.s.attemptId || i} cx=${p.x.toFixed(1)} cy=${p.y.toFixed(1)} r="4">
+        <title>${formatDate(p.s.date)}: ${label}</title>
+      </circle>
+    `;
+  });
 
   const last = points[points.length - 1];
-  const lastLabel = series[series.length - 1].scorePercent === null ? "" :
-    '<text class="chart-label" x="' + last.x.toFixed(1) + '" y="' + (last.y - 10).toFixed(1) + '" text-anchor="middle">' +
-    series[series.length - 1].scorePercent + "%</text>";
+  const lastLabel = series[series.length - 1].scorePercent === null ? null : html`
+    <text class="chart-label" x=${last.x.toFixed(1)} y=${(last.y - 10).toFixed(1)} text-anchor="middle">${series[series.length - 1].scorePercent}%</text>
+  `;
 
-  return (
-    '<div class="chart-wrap"><svg viewBox="0 0 ' + width + " " + height + '" role="img" aria-label="Chapter score percentage over time">' +
-    gridLines + '<path class="chart-line" d="' + path + '"></path>' + circles + lastLabel +
-    "</svg></div>"
-  );
+  return html`
+    <div class="chart-wrap">
+      <svg viewBox=${"0 0 " + width + " " + height} role="img" aria-label="Chapter score percentage over time">
+        ${gridLines}
+        <path class="chart-line" d=${path}></path>
+        ${circles}
+        ${lastLabel}
+      </svg>
+    </div>
+  `;
 }
 
 /* ---------- New Attempt / Retake wizard ---------- */
@@ -329,7 +336,7 @@ const DEFAULT_MCQ_CONFIG = { optionLabels: ["A", "B", "C", "D"], multiSelect: fa
 
 function renderAttemptWizard(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
-  if (!chapter) return mount("<p>Chapter not found.</p>");
+  if (!chapter) return mount(html`<p>Chapter not found.</p>`);
   const isFirstTime = chapter.questionOrder.length === 0;
 
   if (!Wizard || Wizard.chapterId !== chapterId || Wizard.mode !== (isFirstTime ? "new" : "retake")) {
@@ -358,35 +365,52 @@ function renderAnswerFieldset(type, config, chosenValues) {
   chosenValues = chosenValues || [];
   if (type === "mcq") {
     const inputType = config.multiSelect ? "checkbox" : "radio";
-    return '<fieldset><legend>Your answer</legend>' + config.optionLabels.map((label) =>
-      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" ' +
-      (chosenValues.includes(label) ? "checked" : "") + ' />' +
-      '<label for="opt-' + label + '" style="margin:0">' + label + "</label></div>"
-    ).join("") + "</fieldset>";
+    return html`
+      <fieldset>
+        <legend>Your answer</legend>
+        ${config.optionLabels.map((label) => html`
+          <div class="choice-row" key=${label}>
+            <input type=${inputType} name="answer" id=${"opt-" + label} value=${label} checked=${chosenValues.includes(label)} />
+            <label for=${"opt-" + label} style="margin:0">${label}</label>
+          </div>
+        `)}
+      </fieldset>
+    `;
   }
-  return (
-    '<fieldset><legend>Your answer</legend>' +
-    '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" ' + (chosenValues.includes("true") ? "checked" : "") + ' /><label for="opt-true" style="margin:0">True</label></div>' +
-    '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" ' + (chosenValues.includes("false") ? "checked" : "") + ' /><label for="opt-false" style="margin:0">False</label></div>' +
-    "</fieldset>"
-  );
+  return html`
+    <fieldset>
+      <legend>Your answer</legend>
+      <div class="choice-row">
+        <input type="radio" name="answer" id="opt-true" value="true" checked=${chosenValues.includes("true")} />
+        <label for="opt-true" style="margin:0">True</label>
+      </div>
+      <div class="choice-row">
+        <input type="radio" name="answer" id="opt-false" value="false" checked=${chosenValues.includes("false")} />
+        <label for="opt-false" style="margin:0">False</label>
+      </div>
+    </fieldset>
+  `;
 }
 
-function flagCheckboxHtml(checked, label) {
-  return '<div class="choice-row"><input type="checkbox" id="flag-question" ' + (checked ? "checked" : "") + ' />' +
-    '<label for="flag-question" style="margin:0">' + label + "</label></div>";
+function flagCheckbox(checked, label) {
+  return html`
+    <div class="choice-row">
+      <input type="checkbox" id="flag-question" checked=${checked} />
+      <label for="flag-question" style="margin:0">${label}</label>
+    </div>
+  `;
 }
 
 function renderNewWizard(bookId, chapterId, chapter) {
   if (Wizard.stage === "count") {
-    return mount(
-      "<h1>" + esc(chapter.title) + " &mdash; new attempt</h1>" +
-      '<div class="card">' +
-      '<label for="q-count">How many questions in this chapter?</label>' +
-      '<input id="q-count" type="number" min="1" max="200" value="20" />' +
-      '<div class="btn-row"><button type="button" class="primary" onclick="startNewWizardQuestions()">Begin</button></div>' +
-      "</div>"
-    );
+    return mount(html`
+      <h1>${chapter.title} — new attempt</h1>
+      <div class="card">
+        <label for="q-count">How many questions in this chapter?</label>
+        <input id="q-count" type="number" min="1" max="200" value="20" />
+        <div class="btn-row"><button type="button" class="primary" onClick=${startNewWizardQuestions}>Begin</button></div>
+      </div>
+    `);
   }
 
   if (Wizard.stage === "flagged-review") return renderNewFlaggedReview(bookId, chapterId, chapter);
@@ -399,36 +423,34 @@ function renderNewWizard(bookId, chapterId, chapter) {
   const pendingChosen = Wizard.pendingChosen || [];
   const flaggedSoFar = Wizard.draftAnswers.filter((a) => a.flagged).length;
 
-  let configHtml = "";
+  const configHtml = type === "mcq" ? html`
+    <label for="opt-count">Number of options</label>
+    <input id="opt-count" type="number" min="2" max="8" value=${config.optionLabels.length} onChange=${(e) => wizardUpdateOptionCount(e.target.value)} />
+    <div class="choice-row">
+      <input id="multi-select" type="checkbox" checked=${config.multiSelect} onChange=${(e) => wizardUpdateMultiSelect(e.target.checked)} />
+      <label for="multi-select" style="margin:0">Allow selecting more than one option</label>
+    </div>
+  ` : null;
 
-  if (type === "mcq") {
-    configHtml =
-      '<label for="opt-count">Number of options</label>' +
-      '<input id="opt-count" type="number" min="2" max="8" value="' + config.optionLabels.length + '" onchange="wizardUpdateOptionCount(this.value)" />' +
-      '<div class="choice-row"><input id="multi-select" type="checkbox" ' + (config.multiSelect ? "checked" : "") +
-      ' onchange="wizardUpdateMultiSelect(this.checked)" /><label for="multi-select" style="margin:0">Allow selecting more than one option</label></div>';
-  }
-
-  mount(
-    "<h1>" + esc(chapter.title) + "</h1>" +
-    '<p class="wizard-progress">Question ' + (i + 1) + " of " + Wizard.total +
-    (flaggedSoFar > 0 ? " &middot; " + flaggedSoFar + " flagged" : "") + "</p>" +
-    '<div class="card">' +
-    '<label for="q-type">Question type</label>' +
-    '<select id="q-type" onchange="wizardUpdateType(this.value)">' +
-    '<option value="mcq" ' + (type === "mcq" ? "selected" : "") + '>Multiple choice</option>' +
-    '<option value="truefalse" ' + (type === "truefalse" ? "selected" : "") + '>True / False</option>' +
-    "</select>" +
-    configHtml +
-    renderAnswerFieldset(type, config, pendingChosen) +
-    flagCheckboxHtml(Wizard.pendingFlagged, "Not sure yet &mdash; flag this question to review before submitting") +
-    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
-    '<div class="btn-row">' +
-    (i > 0 ? '<button type="button" onclick="wizardGoBack()">Previous question</button>' : "") +
-    '<button type="button" class="primary" onclick="wizardCommitQuestion(' + isLast + ')">' +
-    (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
-    "</div>"
-  );
+  mount(html`
+    <h1>${chapter.title}</h1>
+    <p class="wizard-progress">Question ${i + 1} of ${Wizard.total}${flaggedSoFar > 0 ? ` · ${flaggedSoFar} flagged` : ""}</p>
+    <div class="card">
+      <label for="q-type">Question type</label>
+      <select id="q-type" onChange=${(e) => wizardUpdateType(e.target.value)}>
+        <option value="mcq" selected=${type === "mcq"}>Multiple choice</option>
+        <option value="truefalse" selected=${type === "truefalse"}>True / False</option>
+      </select>
+      ${configHtml}
+      ${renderAnswerFieldset(type, config, pendingChosen)}
+      ${flagCheckbox(Wizard.pendingFlagged, "Not sure yet — flag this question to review before submitting")}
+      ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
+      <div class="btn-row">
+        ${i > 0 ? html`<button type="button" onClick=${wizardGoBack}>Previous question</button>` : null}
+        <button type="button" class="primary" onClick=${() => wizardCommitQuestion(isLast)}>${isLast ? "Finish attempt" : "Next question"}</button>
+      </div>
+    </div>
+  `);
 }
 
 function wizardGoBack() {
@@ -529,20 +551,22 @@ function renderNewFlaggedReview(bookId, chapterId, chapter) {
   const flaggedIdx = [];
   Wizard.draftAnswers.forEach((a, idx) => { if (a.flagged) flaggedIdx.push(idx); });
 
-  const items = flaggedIdx.map((idx) =>
-    '<li class="flagged-item"><button type="button" onclick="reviewNewFlaggedQuestion(' + idx + ')">Question ' + (idx + 1) + "</button>" +
-    '<span class="card-meta">' + esc(formatChosenSummary(Wizard.draftAnswers[idx].chosen)) + "</span></li>"
-  ).join("");
+  const items = flaggedIdx.map((idx) => html`
+    <li class="flagged-item" key=${idx}>
+      <button type="button" onClick=${() => reviewNewFlaggedQuestion(idx)}>Question ${idx + 1}</button>
+      <span class="card-meta">${formatChosenSummary(Wizard.draftAnswers[idx].chosen)}</span>
+    </li>
+  `);
 
-  mount(
-    "<h1>" + esc(chapter.title) + "</h1>" +
-    '<div class="card">' +
-    "<h2>" + flaggedIdx.length + " question(s) flagged for review</h2>" +
-    "<p>Take another look before submitting, or submit as-is.</p>" +
-    '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
-    '<div class="btn-row"><button type="button" class="primary" onclick="finishNewAttempt()">Submit attempt</button></div>' +
-    "</div>"
-  );
+  mount(html`
+    <h1>${chapter.title}</h1>
+    <div class="card">
+      <h2>${flaggedIdx.length} question(s) flagged for review</h2>
+      <p>Take another look before submitting, or submit as-is.</p>
+      <ul class="flagged-list">${items.length ? items : html`<li>None left — you're all set.</li>`}</ul>
+      <div class="btn-row"><button type="button" class="primary" onClick=${finishNewAttempt}>Submit attempt</button></div>
+    </div>
+  `);
 }
 
 function reviewNewFlaggedQuestion(idx) {
@@ -556,18 +580,18 @@ function renderNewReviewOne(bookId, chapterId, chapter) {
   const q = Wizard.draftQuestions[idx];
   const a = Wizard.draftAnswers[idx];
 
-  mount(
-    "<h1>" + esc(chapter.title) + "</h1>" +
-    '<p class="wizard-progress">Reviewing question ' + (idx + 1) + "</p>" +
-    '<div class="card">' +
-    renderAnswerFieldset(q.type, q.config, a.chosen) +
-    flagCheckboxHtml(a.flagged, "Still not sure &mdash; keep this question flagged") +
-    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
-    '<div class="btn-row">' +
-    '<button type="button" class="primary" onclick="saveNewReviewedQuestion()">Save and return to flagged list</button>' +
-    "</div>" +
-    "</div>"
-  );
+  mount(html`
+    <h1>${chapter.title}</h1>
+    <p class="wizard-progress">Reviewing question ${idx + 1}</p>
+    <div class="card">
+      ${renderAnswerFieldset(q.type, q.config, a.chosen)}
+      ${flagCheckbox(a.flagged, "Still not sure — keep this question flagged")}
+      ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
+      <div class="btn-row">
+        <button type="button" class="primary" onClick=${saveNewReviewedQuestion}>Save and return to flagged list</button>
+      </div>
+    </div>
+  `);
 }
 
 function saveNewReviewedQuestion() {
@@ -598,20 +622,19 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
   const priorEntry = Wizard.responses[questionId] || { chosen: [], flagged: false };
   const flaggedSoFar = Object.values(Wizard.responses).filter((r) => r.flagged).length;
 
-  mount(
-    "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
-    '<p class="wizard-progress">Question ' + (i + 1) + " of " + chapter.questionOrder.length +
-    (flaggedSoFar > 0 ? " &middot; " + flaggedSoFar + " flagged" : "") + "</p>" +
-    '<div class="card">' +
-    renderAnswerFieldset(question.type, question.config, priorEntry.chosen) +
-    flagCheckboxHtml(priorEntry.flagged, "Not sure yet &mdash; flag this question to review before submitting") +
-    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
-    '<div class="btn-row">' +
-    (i > 0 ? '<button type="button" onclick="retakeGoBack()">Previous question</button>' : "") +
-    '<button type="button" class="primary" onclick="retakeCommitQuestion(\'' + questionId + '\',' + isLast + ')">' +
-    (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
-    "</div>"
-  );
+  mount(html`
+    <h1>${chapter.title} — retake</h1>
+    <p class="wizard-progress">Question ${i + 1} of ${chapter.questionOrder.length}${flaggedSoFar > 0 ? ` · ${flaggedSoFar} flagged` : ""}</p>
+    <div class="card">
+      ${renderAnswerFieldset(question.type, question.config, priorEntry.chosen)}
+      ${flagCheckbox(priorEntry.flagged, "Not sure yet — flag this question to review before submitting")}
+      ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
+      <div class="btn-row">
+        ${i > 0 ? html`<button type="button" onClick=${retakeGoBack}>Previous question</button>` : null}
+        <button type="button" class="primary" onClick=${() => retakeCommitQuestion(questionId, isLast)}>${isLast ? "Finish attempt" : "Next question"}</button>
+      </div>
+    </div>
+  `);
 }
 
 function retakeGoBack() {
@@ -662,19 +685,23 @@ function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
   const flaggedQids = chapter.questionOrder.filter((qid) => Wizard.responses[qid] && Wizard.responses[qid].flagged);
   const items = flaggedQids.map((qid) => {
     const num = chapter.questionOrder.indexOf(qid) + 1;
-    return '<li class="flagged-item"><button type="button" onclick="reviewRetakeFlaggedQuestion(\'' + qid + '\')">Question ' + num + "</button>" +
-      '<span class="card-meta">' + esc(formatChosenSummary(Wizard.responses[qid].chosen)) + "</span></li>";
-  }).join("");
+    return html`
+      <li class="flagged-item" key=${qid}>
+        <button type="button" onClick=${() => reviewRetakeFlaggedQuestion(qid)}>Question ${num}</button>
+        <span class="card-meta">${formatChosenSummary(Wizard.responses[qid].chosen)}</span>
+      </li>
+    `;
+  });
 
-  mount(
-    "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
-    '<div class="card">' +
-    "<h2>" + flaggedQids.length + " question(s) flagged for review</h2>" +
-    "<p>Take another look before submitting, or submit as-is.</p>" +
-    '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
-    '<div class="btn-row"><button type="button" class="primary" onclick="finishRetakeAttempt()">Submit attempt</button></div>' +
-    "</div>"
-  );
+  mount(html`
+    <h1>${chapter.title} — retake</h1>
+    <div class="card">
+      <h2>${flaggedQids.length} question(s) flagged for review</h2>
+      <p>Take another look before submitting, or submit as-is.</p>
+      <ul class="flagged-list">${items.length ? items : html`<li>None left — you're all set.</li>`}</ul>
+      <div class="btn-row"><button type="button" class="primary" onClick=${finishRetakeAttempt}>Submit attempt</button></div>
+    </div>
+  `);
 }
 
 function reviewRetakeFlaggedQuestion(questionId) {
@@ -689,18 +716,18 @@ function renderRetakeReviewOne(bookId, chapterId, chapter) {
   const entry = Wizard.responses[questionId] || { chosen: [], flagged: false };
   const num = chapter.questionOrder.indexOf(questionId) + 1;
 
-  mount(
-    "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
-    '<p class="wizard-progress">Reviewing question ' + num + "</p>" +
-    '<div class="card">' +
-    renderAnswerFieldset(question.type, question.config, entry.chosen) +
-    flagCheckboxHtml(entry.flagged, "Still not sure &mdash; keep this question flagged") +
-    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
-    '<div class="btn-row">' +
-    '<button type="button" class="primary" onclick="saveRetakeReviewedQuestion()">Save and return to flagged list</button>' +
-    "</div>" +
-    "</div>"
-  );
+  mount(html`
+    <h1>${chapter.title} — retake</h1>
+    <p class="wizard-progress">Reviewing question ${num}</p>
+    <div class="card">
+      ${renderAnswerFieldset(question.type, question.config, entry.chosen)}
+      ${flagCheckbox(entry.flagged, "Still not sure — keep this question flagged")}
+      ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
+      <div class="btn-row">
+        <button type="button" class="primary" onClick=${saveRetakeReviewedQuestion}>Save and return to flagged list</button>
+      </div>
+    </div>
+  `);
 }
 
 function saveRetakeReviewedQuestion() {
@@ -725,7 +752,7 @@ function saveRetakeReviewedQuestion() {
 function renderReview(bookId, chapterId, attemptId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const attempt = Store.attempts.find((a) => a.id === attemptId);
-  if (!chapter || !attempt) return mount("<p>Not found.</p>");
+  if (!chapter || !attempt) return mount(html`<p>Not found.</p>`);
 
   const rows = attempt.responses.map((response, idx) => {
     const question = Store.questions.find((q) => q.id === response.questionId);
@@ -733,45 +760,55 @@ function renderReview(bookId, chapterId, attemptId) {
       ? response.chosen.map(formatAnswerValue).join(", ") + (response.flagged ? " (flagged)" : "")
       : (response.flagged ? "Flagged — no answer given" : "(no answer)");
 
-    let correctInput = "";
+    let correctInput;
     if (question.type === "mcq") {
       const inputType = question.config.multiSelect ? "checkbox" : "radio";
       correctInput = question.config.optionLabels.map((label) => {
         const checked = question.correctAnswer && question.correctAnswer.includes(label);
-        return '<div class="choice-row"><input type="' + inputType + '" name="correct-' + question.id + '" id="correct-' + question.id + '-' + label + '" value="' + label + '" ' + (checked ? "checked" : "") + ' />' +
-          '<label for="correct-' + question.id + '-' + label + '" style="margin:0">' + label + "</label></div>";
-      }).join("");
+        return html`
+          <div class="choice-row" key=${label}>
+            <input type=${inputType} name=${"correct-" + question.id} id=${"correct-" + question.id + "-" + label} value=${label} checked=${checked} />
+            <label for=${"correct-" + question.id + "-" + label} style="margin:0">${label}</label>
+          </div>
+        `;
+      });
     } else {
       const trueChecked = question.correctAnswer && question.correctAnswer.includes("true");
       const falseChecked = question.correctAnswer && question.correctAnswer.includes("false");
-      correctInput =
-        '<div class="choice-row"><input type="radio" name="correct-' + question.id + '" id="correct-' + question.id + '-true" value="true" ' + (trueChecked ? "checked" : "") + ' /><label for="correct-' + question.id + '-true" style="margin:0">True</label></div>' +
-        '<div class="choice-row"><input type="radio" name="correct-' + question.id + '" id="correct-' + question.id + '-false" value="false" ' + (falseChecked ? "checked" : "") + ' /><label for="correct-' + question.id + '-false" style="margin:0">False</label></div>';
+      correctInput = html`
+        <div class="choice-row">
+          <input type="radio" name=${"correct-" + question.id} id=${"correct-" + question.id + "-true"} value="true" checked=${trueChecked} />
+          <label for=${"correct-" + question.id + "-true"} style="margin:0">True</label>
+        </div>
+        <div class="choice-row">
+          <input type="radio" name=${"correct-" + question.id} id=${"correct-" + question.id + "-false"} value="false" checked=${falseChecked} />
+          <label for=${"correct-" + question.id + "-false"} style="margin:0">False</label>
+        </div>
+      `;
     }
 
     const statusClass = response.correct === null ? "status-ungraded" : response.correct ? "status-correct" : "status-incorrect";
     const statusText = response.correct === null ? "Ungraded" : response.correct ? "Correct" : "Incorrect";
 
-    return (
-      '<div class="card">' +
-      "<h3>Question " + (idx + 1) + '</h3>' +
-      "<p>Your answer: <strong>" + esc(chosenLabel) + "</strong> &mdash; <span class=\"" + statusClass + "\">" + statusText + "</span></p>" +
-      '<fieldset><legend>Correct answer</legend>' + correctInput + "</fieldset>" +
-      '<button type="button" onclick="saveCorrectAnswer(\'' + question.id + '\',\'' + bookId + '\',\'' + chapterId + '\',\'' + attemptId + '\')">Save correct answer</button>' +
-      "</div>"
-    );
-  }).join("");
+    return html`
+      <div class="card" key=${response.questionId}>
+        <h3>Question ${idx + 1}</h3>
+        <p>Your answer: <strong>${chosenLabel}</strong> — <span class=${statusClass}>${statusText}</span></p>
+        <fieldset><legend>Correct answer</legend>${correctInput}</fieldset>
+        <button type="button" onClick=${() => saveCorrectAnswer(question.id, bookId, chapterId, attemptId)}>Save correct answer</button>
+      </div>
+    `;
+  });
 
-  mount(
-    '<p><a href="#/books/' + bookId + '/chapters/' + chapterId + '">&larr; ' + esc(chapter.title) + "</a></p>" +
-    "<h1>Review &amp; grade</h1>" +
-    "<p>Lock in the correct answer for each question. Editing a correct answer later will re-grade every past attempt for that question.</p>" +
-    rows
-  );
+  mount(html`
+    <p><a href=${"#/books/" + bookId + "/chapters/" + chapterId}>← ${chapter.title}</a></p>
+    <h1>Review & grade</h1>
+    <p>Lock in the correct answer for each question. Editing a correct answer later will re-grade every past attempt for that question.</p>
+    ${rows}
+  `);
 }
 
 function saveCorrectAnswer(questionId, bookId, chapterId, attemptId) {
-  const question = Store.questions.find((q) => q.id === questionId);
   const inputs = document.querySelectorAll('input[name="correct-' + questionId + '"]:checked');
   const values = Array.from(inputs).map((el) => el.value);
   if (!values.length) {
@@ -786,7 +823,7 @@ function saveCorrectAnswer(questionId, bookId, chapterId, attemptId) {
 
 function renderTrends(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
-  if (!chapter) return mount("<p>Not found.</p>");
+  if (!chapter) return mount(html`<p>Not found.</p>`);
 
   const chapterSeries = computeChapterTrend(Store, chapterId);
   const weakest = weakestQuestions(Store, chapterId, 5);
@@ -794,44 +831,48 @@ function renderTrends(bookId, chapterId) {
     computeQuestionTrend(Store, qid).sequence.some((s) => s.correct !== null)
   );
 
-  const weakestRows = weakest.map((w) =>
-    "<tr><td>Question " + w.questionNumber + "</td><td>" + Math.round(w.incorrectRate * 100) + "%</td><td>" + w.gradedCount + "</td></tr>"
-  ).join("");
+  const weakestRows = weakest.map((w) => html`
+    <tr key=${w.questionId}><td>Question ${w.questionNumber}</td><td>${Math.round(w.incorrectRate * 100)}%</td><td>${w.gradedCount}</td></tr>
+  `);
 
   const questionRows = chapter.questionOrder.map((qid, idx) => {
     const trend = computeQuestionTrend(Store, qid);
-    const seq = trend.sequence.map((s) => (s.correct === null ? "&ndash;" : s.correct ? "&#10003;" : "&#10007;")).join(" ");
-    return "<tr><td>Question " + (idx + 1) + "</td><td>" + (seq || "No attempts") + "</td></tr>";
-  }).join("");
+    const seq = trend.sequence.length
+      ? trend.sequence.map((s) => (s.correct === null ? "–" : s.correct ? "✓" : "✗")).join(" ")
+      : "No attempts";
+    return html`<tr key=${qid}><td>Question ${idx + 1}</td><td>${seq}</td></tr>`;
+  });
 
-  mount(
-    '<p><a href="#/books/' + bookId + '/chapters/' + chapterId + '">&larr; ' + esc(chapter.title) + "</a></p>" +
-    "<h1>Trends: " + esc(chapter.title) + "</h1>" +
-    (chapterSeries.length ? '<div class="card"><h2>Score over time</h2>' + renderScoreLineChart(chapterSeries) + "</div>" : "") +
-    '<div class="card"><h2>Weakest questions</h2>' +
-    (weakestRows
-      ? '<div class="table-wrap"><table><thead><tr><th>Question</th><th>Incorrect rate</th><th>Graded attempts</th></tr></thead><tbody>' + weakestRows + "</tbody></table></div>"
-      : anyGraded
-        ? "<p>No incorrect answers yet &mdash; nice work!</p>"
-        : "<p>Not enough graded attempts yet.</p>") +
-    "</div>" +
-    '<div class="card"><h2>Per-question history</h2>' +
-    '<div class="table-wrap"><table><thead><tr><th>Question</th><th>Attempt sequence</th></tr></thead><tbody>' + questionRows + "</tbody></table></div>" +
-    "</div>"
-  );
+  mount(html`
+    <p><a href=${"#/books/" + bookId + "/chapters/" + chapterId}>← ${chapter.title}</a></p>
+    <h1>Trends: ${chapter.title}</h1>
+    ${chapterSeries.length ? html`<div class="card"><h2>Score over time</h2>${renderScoreLineChart(chapterSeries)}</div>` : null}
+    <div class="card">
+      <h2>Weakest questions</h2>
+      ${weakestRows.length
+        ? html`<div class="table-wrap"><table><thead><tr><th>Question</th><th>Incorrect rate</th><th>Graded attempts</th></tr></thead><tbody>${weakestRows}</tbody></table></div>`
+        : anyGraded
+          ? html`<p>No incorrect answers yet — nice work!</p>`
+          : html`<p>Not enough graded attempts yet.</p>`}
+    </div>
+    <div class="card">
+      <h2>Per-question history</h2>
+      <div class="table-wrap"><table><thead><tr><th>Question</th><th>Attempt sequence</th></tr></thead><tbody>${questionRows}</tbody></table></div>
+    </div>
+  `);
 }
 
 /* ---------- Print trigger ---------- */
 
 function renderPrintTrigger(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
-  if (!chapter) return mount("<p>Not found.</p>");
-  mount(
-    '<p><a href="#/books/' + bookId + '/chapters/' + chapterId + '">&larr; ' + esc(chapter.title) + "</a></p>" +
-    "<h1>Print: " + esc(chapter.title) + "</h1>" +
-    "<p>Click print, then choose \"Save as PDF\" in the print dialog.</p>" +
-    '<div class="btn-row"><button type="button" class="primary" onclick="triggerPrint(\'' + chapterId + '\')">Print</button></div>'
-  );
+  if (!chapter) return mount(html`<p>Not found.</p>`);
+  mount(html`
+    <p><a href=${"#/books/" + bookId + "/chapters/" + chapterId}>← ${chapter.title}</a></p>
+    <h1>Print: ${chapter.title}</h1>
+    <p>Click print, then choose "Save as PDF" in the print dialog.</p>
+    <div class="btn-row"><button type="button" class="primary" onClick=${() => triggerPrint(chapterId)}>Print</button></div>
+  `);
   buildPrintView(chapterId);
 }
 
@@ -839,3 +880,5 @@ function triggerPrint(chapterId) {
   buildPrintView(chapterId);
   window.print();
 }
+
+window.render = render;
