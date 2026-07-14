@@ -102,7 +102,7 @@ function deleteChapter(chapterId) {
 /* ---------- Attempts ---------- */
 
 function commitNewAttempt(chapterId, questionDefs, answers) {
-  // questionDefs: [{type, config}], answers: [{chosen: [...]}], same order/length
+  // questionDefs: [{type, config}], answers: [{chosen: [...], flagged}], same order/length
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const questionIds = [];
   questionDefs.forEach((def) => {
@@ -126,6 +126,7 @@ function commitNewAttempt(chapterId, questionDefs, answers) {
     responses: questionIds.map((qid, i) => ({
       questionId: qid,
       chosen: answers[i].chosen,
+      flagged: !!answers[i].flagged,
       correct: null,
     })),
   };
@@ -134,12 +135,13 @@ function commitNewAttempt(chapterId, questionDefs, answers) {
   return attempt;
 }
 
-function commitRetakeAttempt(chapterId, chosenByQuestionId) {
+function commitRetakeAttempt(chapterId, responsesByQuestionId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const responses = chapter.questionOrder.map((qid) => {
     const question = Store.questions.find((q) => q.id === qid);
-    const chosen = chosenByQuestionId[qid] || [];
-    return { questionId: qid, chosen, correct: gradeResponse(chosen, question.correctAnswer) };
+    const entry = responsesByQuestionId[qid] || { chosen: [], flagged: false };
+    const correct = entry.chosen.length === 0 ? null : gradeResponse(entry.chosen, question.correctAnswer);
+    return { questionId: qid, chosen: entry.chosen, flagged: !!entry.flagged, correct };
   });
   const attempt = {
     id: uid("a"),

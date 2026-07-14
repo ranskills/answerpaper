@@ -22,7 +22,7 @@ function setCorrectAnswer(store, questionId, correctAnswer) {
   store.attempts.forEach((attempt) => {
     attempt.responses.forEach((response) => {
       if (response.questionId === questionId) {
-        response.correct = gradeResponse(response.chosen, correctAnswer);
+        response.correct = response.chosen.length === 0 ? null : gradeResponse(response.chosen, correctAnswer);
       }
     });
   });

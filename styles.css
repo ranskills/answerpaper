@@ -344,6 +344,22 @@ th, td {
   margin-bottom: var(--space-3);
 }
 
+.flagged-list {
+  list-style: none;
+  margin: 0 0 var(--space-3) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.flagged-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 /* ---------- Print ---------- */
 
 #print-root {

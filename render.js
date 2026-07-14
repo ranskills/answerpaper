@@ -18,6 +18,10 @@ function formatAnswerValue(value) {
   return value;
 }
 
+function formatChosenSummary(chosen) {
+  return chosen.length ? chosen.map(formatAnswerValue).join(", ") : "";
+}
+
 function mount(html) {
   document.getElementById("main").innerHTML = html;
 }
@@ -336,18 +340,41 @@ function renderAttemptWizard(bookId, chapterId) {
         lastMcqConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
         draftQuestions: [], draftAnswers: [],
         currentType: "mcq", currentConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
-        error: null,
+        error: null, pendingFlagged: false, reviewIndex: null,
       };
     } else {
       Wizard = {
         chapterId, bookId, mode: "retake",
-        index: 0, responses: {}, error: null,
+        stage: "questions", index: 0, responses: {}, error: null, reviewQuestionId: null,
       };
     }
   }
 
   if (Wizard.mode === "new") return renderNewWizard(bookId, chapterId, chapter);
   return renderRetakeWizard(bookId, chapterId, chapter);
+}
+
+function renderAnswerFieldset(type, config, chosenValues) {
+  chosenValues = chosenValues || [];
+  if (type === "mcq") {
+    const inputType = config.multiSelect ? "checkbox" : "radio";
+    return '<fieldset><legend>Your answer</legend>' + config.optionLabels.map((label) =>
+      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" ' +
+      (chosenValues.includes(label) ? "checked" : "") + ' />' +
+      '<label for="opt-' + label + '" style="margin:0">' + label + "</label></div>"
+    ).join("") + "</fieldset>";
+  }
+  return (
+    '<fieldset><legend>Your answer</legend>' +
+    '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" ' + (chosenValues.includes("true") ? "checked" : "") + ' /><label for="opt-true" style="margin:0">True</label></div>' +
+    '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" ' + (chosenValues.includes("false") ? "checked" : "") + ' /><label for="opt-false" style="margin:0">False</label></div>' +
+    "</fieldset>"
+  );
+}
+
+function flagCheckboxHtml(checked, label) {
+  return '<div class="choice-row"><input type="checkbox" id="flag-question" ' + (checked ? "checked" : "") + ' />' +
+    '<label for="flag-question" style="margin:0">' + label + "</label></div>";
 }
 
 function renderNewWizard(bookId, chapterId, chapter) {
@@ -362,14 +389,17 @@ function renderNewWizard(bookId, chapterId, chapter) {
     );
   }
 
+  if (Wizard.stage === "flagged-review") return renderNewFlaggedReview(bookId, chapterId, chapter);
+  if (Wizard.stage === "reviewing-one") return renderNewReviewOne(bookId, chapterId, chapter);
+
   const i = Wizard.index;
   const type = Wizard.currentType;
   const config = Wizard.currentConfig;
   const isLast = i === Wizard.total - 1;
   const pendingChosen = Wizard.pendingChosen || [];
+  const flaggedSoFar = Wizard.draftAnswers.filter((a) => a.flagged).length;
 
   let configHtml = "";
-  let answerHtml = "";
 
   if (type === "mcq") {
     configHtml =
@@ -377,24 +407,12 @@ function renderNewWizard(bookId, chapterId, chapter) {
       '<input id="opt-count" type="number" min="2" max="8" value="' + config.optionLabels.length + '" onchange="wizardUpdateOptionCount(this.value)" />' +
       '<div class="choice-row"><input id="multi-select" type="checkbox" ' + (config.multiSelect ? "checked" : "") +
       ' onchange="wizardUpdateMultiSelect(this.checked)" /><label for="multi-select" style="margin:0">Allow selecting more than one option</label></div>';
-
-    const inputType = config.multiSelect ? "checkbox" : "radio";
-    answerHtml = '<fieldset><legend>Your answer</legend>' + config.optionLabels.map((label) =>
-      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" ' +
-      (pendingChosen.includes(label) ? "checked" : "") + ' />' +
-      '<label for="opt-' + label + '" style="margin:0">' + label + "</label></div>"
-    ).join("") + "</fieldset>";
-  } else {
-    answerHtml =
-      '<fieldset><legend>Your answer</legend>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" ' + (pendingChosen.includes("true") ? "checked" : "") + ' /><label for="opt-true" style="margin:0">True</label></div>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" ' + (pendingChosen.includes("false") ? "checked" : "") + ' /><label for="opt-false" style="margin:0">False</label></div>' +
-      "</fieldset>";
   }
 
   mount(
     "<h1>" + esc(chapter.title) + "</h1>" +
-    '<p class="wizard-progress">Question ' + (i + 1) + " of " + Wizard.total + "</p>" +
+    '<p class="wizard-progress">Question ' + (i + 1) + " of " + Wizard.total +
+    (flaggedSoFar > 0 ? " &middot; " + flaggedSoFar + " flagged" : "") + "</p>" +
     '<div class="card">' +
     '<label for="q-type">Question type</label>' +
     '<select id="q-type" onchange="wizardUpdateType(this.value)">' +
@@ -402,7 +420,8 @@ function renderNewWizard(bookId, chapterId, chapter) {
     '<option value="truefalse" ' + (type === "truefalse" ? "selected" : "") + '>True / False</option>' +
     "</select>" +
     configHtml +
-    answerHtml +
+    renderAnswerFieldset(type, config, pendingChosen) +
+    flagCheckboxHtml(Wizard.pendingFlagged, "Not sure yet &mdash; flag this question to review before submitting") +
     (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
     '<div class="btn-row">' +
     (i > 0 ? '<button type="button" onclick="wizardGoBack()">Previous question</button>' : "") +
@@ -420,6 +439,7 @@ function wizardGoBack() {
   Wizard.currentType = prev.type;
   Wizard.currentConfig = Object.assign({}, prev.config, prev.config.optionLabels ? { optionLabels: prev.config.optionLabels.slice() } : {});
   Wizard.pendingChosen = prevAnswer.chosen.slice();
+  Wizard.pendingFlagged = !!prevAnswer.flagged;
   Wizard.error = null;
   render();
 }
@@ -437,6 +457,7 @@ function startNewWizardQuestions() {
 function wizardUpdateType(type) {
   Wizard.currentType = type;
   Wizard.pendingChosen = null;
+  Wizard.pendingFlagged = false;
   if (type === "mcq") {
     Wizard.currentConfig = Object.assign({}, Wizard.lastMcqConfig, { optionLabels: Wizard.lastMcqConfig.optionLabels.slice() });
   } else {
@@ -461,28 +482,32 @@ function wizardCommitQuestion(isLast) {
   const type = Wizard.currentType;
   const config = Wizard.currentConfig;
   const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+  const flagged = document.getElementById("flag-question").checked;
 
-  if (checked.length === 0) {
-    Wizard.error = "Select an answer before continuing.";
+  if (checked.length === 0 && !flagged) {
+    Wizard.error = "Select an answer, or flag this question to come back to it later.";
     render();
     return;
   }
   Wizard.error = null;
 
   Wizard.draftQuestions.push({ type, config: Object.assign({}, config) });
-  Wizard.draftAnswers.push({ chosen: checked });
+  Wizard.draftAnswers.push({ chosen: checked, flagged });
   Wizard.pendingChosen = null;
+  Wizard.pendingFlagged = false;
 
   if (type === "mcq") {
     Wizard.lastMcqConfig = Object.assign({}, config, { optionLabels: config.optionLabels.slice() });
   }
 
   if (isLast) {
-    const attempt = commitNewAttempt(Wizard.chapterId, Wizard.draftQuestions, Wizard.draftAnswers);
-    const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
-    Wizard = null;
-    navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
-    render();
+    const anyFlagged = Wizard.draftAnswers.some((a) => a.flagged);
+    if (anyFlagged) {
+      Wizard.stage = "flagged-review";
+      render();
+      return;
+    }
+    finishNewAttempt();
     return;
   }
 
@@ -492,33 +517,94 @@ function wizardCommitQuestion(isLast) {
   render();
 }
 
+function finishNewAttempt() {
+  const attempt = commitNewAttempt(Wizard.chapterId, Wizard.draftQuestions, Wizard.draftAnswers);
+  const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
+  Wizard = null;
+  navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
+  render();
+}
+
+function renderNewFlaggedReview(bookId, chapterId, chapter) {
+  const flaggedIdx = [];
+  Wizard.draftAnswers.forEach((a, idx) => { if (a.flagged) flaggedIdx.push(idx); });
+
+  const items = flaggedIdx.map((idx) =>
+    '<li class="flagged-item"><button type="button" onclick="reviewNewFlaggedQuestion(' + idx + ')">Question ' + (idx + 1) + "</button>" +
+    '<span class="card-meta">' + esc(formatChosenSummary(Wizard.draftAnswers[idx].chosen)) + "</span></li>"
+  ).join("");
+
+  mount(
+    "<h1>" + esc(chapter.title) + "</h1>" +
+    '<div class="card">' +
+    "<h2>" + flaggedIdx.length + " question(s) flagged for review</h2>" +
+    "<p>Take another look before submitting, or submit as-is.</p>" +
+    '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
+    '<div class="btn-row"><button type="button" class="primary" onclick="finishNewAttempt()">Submit attempt</button></div>' +
+    "</div>"
+  );
+}
+
+function reviewNewFlaggedQuestion(idx) {
+  Wizard.reviewIndex = idx;
+  Wizard.stage = "reviewing-one";
+  render();
+}
+
+function renderNewReviewOne(bookId, chapterId, chapter) {
+  const idx = Wizard.reviewIndex;
+  const q = Wizard.draftQuestions[idx];
+  const a = Wizard.draftAnswers[idx];
+
+  mount(
+    "<h1>" + esc(chapter.title) + "</h1>" +
+    '<p class="wizard-progress">Reviewing question ' + (idx + 1) + "</p>" +
+    '<div class="card">' +
+    renderAnswerFieldset(q.type, q.config, a.chosen) +
+    flagCheckboxHtml(a.flagged, "Still not sure &mdash; keep this question flagged") +
+    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
+    '<div class="btn-row">' +
+    '<button type="button" class="primary" onclick="saveNewReviewedQuestion()">Save and return to flagged list</button>' +
+    "</div>" +
+    "</div>"
+  );
+}
+
+function saveNewReviewedQuestion() {
+  const idx = Wizard.reviewIndex;
+  const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+  const flagged = document.getElementById("flag-question").checked;
+
+  if (checked.length === 0 && !flagged) {
+    Wizard.error = "Select an answer, or keep this question flagged.";
+    render();
+    return;
+  }
+  Wizard.error = null;
+  Wizard.draftAnswers[idx] = { chosen: checked, flagged };
+  Wizard.reviewIndex = null;
+  Wizard.stage = "flagged-review";
+  render();
+}
+
 function renderRetakeWizard(bookId, chapterId, chapter) {
+  if (Wizard.stage === "flagged-review") return renderRetakeFlaggedReview(bookId, chapterId, chapter);
+  if (Wizard.stage === "reviewing-one") return renderRetakeReviewOne(bookId, chapterId, chapter);
+
   const i = Wizard.index;
   const questionId = chapter.questionOrder[i];
   const question = Store.questions.find((q) => q.id === questionId);
   const isLast = i === chapter.questionOrder.length - 1;
-  const priorChosen = Wizard.responses[questionId] || [];
-
-  let answerHtml = "";
-  if (question.type === "mcq") {
-    const inputType = question.config.multiSelect ? "checkbox" : "radio";
-    answerHtml = '<fieldset><legend>Your answer</legend>' + question.config.optionLabels.map((label) =>
-      '<div class="choice-row"><input type="' + inputType + '" name="answer" id="opt-' + label + '" value="' + label + '" ' +
-      (priorChosen.includes(label) ? "checked" : "") + ' />' +
-      '<label for="opt-' + label + '" style="margin:0">' + label + "</label></div>"
-    ).join("") + "</fieldset>";
-  } else {
-    answerHtml =
-      '<fieldset><legend>Your answer</legend>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-true" value="true" ' + (priorChosen.includes("true") ? "checked" : "") + ' /><label for="opt-true" style="margin:0">True</label></div>' +
-      '<div class="choice-row"><input type="radio" name="answer" id="opt-false" value="false" ' + (priorChosen.includes("false") ? "checked" : "") + ' /><label for="opt-false" style="margin:0">False</label></div>' +
-      "</fieldset>";
-  }
+  const priorEntry = Wizard.responses[questionId] || { chosen: [], flagged: false };
+  const flaggedSoFar = Object.values(Wizard.responses).filter((r) => r.flagged).length;
 
   mount(
     "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
-    '<p class="wizard-progress">Question ' + (i + 1) + " of " + chapter.questionOrder.length + "</p>" +
-    '<div class="card">' + answerHtml +
+    '<p class="wizard-progress">Question ' + (i + 1) + " of " + chapter.questionOrder.length +
+    (flaggedSoFar > 0 ? " &middot; " + flaggedSoFar + " flagged" : "") + "</p>" +
+    '<div class="card">' +
+    renderAnswerFieldset(question.type, question.config, priorEntry.chosen) +
+    flagCheckboxHtml(priorEntry.flagged, "Not sure yet &mdash; flag this question to review before submitting") +
     (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
     '<div class="btn-row">' +
     (i > 0 ? '<button type="button" onclick="retakeGoBack()">Previous question</button>' : "") +
@@ -537,26 +623,100 @@ function retakeGoBack() {
 
 function retakeCommitQuestion(questionId, isLast) {
   const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+  const flagged = document.getElementById("flag-question").checked;
 
-  if (checked.length === 0) {
-    Wizard.error = "Select an answer before continuing.";
+  if (checked.length === 0 && !flagged) {
+    Wizard.error = "Select an answer, or flag this question to come back to it later.";
     render();
     return;
   }
   Wizard.error = null;
 
-  Wizard.responses[questionId] = checked;
+  Wizard.responses[questionId] = { chosen: checked, flagged };
 
   if (isLast) {
-    const attempt = commitRetakeAttempt(Wizard.chapterId, Wizard.responses);
-    const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
-    Wizard = null;
-    navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
-    render();
+    const chapter = Store.chapters.find((c) => c.id === Wizard.chapterId);
+    const anyFlagged = chapter.questionOrder.some((qid) => Wizard.responses[qid] && Wizard.responses[qid].flagged);
+    if (anyFlagged) {
+      Wizard.stage = "flagged-review";
+      render();
+      return;
+    }
+    finishRetakeAttempt();
     return;
   }
 
   Wizard.index += 1;
+  render();
+}
+
+function finishRetakeAttempt() {
+  const attempt = commitRetakeAttempt(Wizard.chapterId, Wizard.responses);
+  const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
+  Wizard = null;
+  navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
+  render();
+}
+
+function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
+  const flaggedQids = chapter.questionOrder.filter((qid) => Wizard.responses[qid] && Wizard.responses[qid].flagged);
+  const items = flaggedQids.map((qid) => {
+    const num = chapter.questionOrder.indexOf(qid) + 1;
+    return '<li class="flagged-item"><button type="button" onclick="reviewRetakeFlaggedQuestion(\'' + qid + '\')">Question ' + num + "</button>" +
+      '<span class="card-meta">' + esc(formatChosenSummary(Wizard.responses[qid].chosen)) + "</span></li>";
+  }).join("");
+
+  mount(
+    "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
+    '<div class="card">' +
+    "<h2>" + flaggedQids.length + " question(s) flagged for review</h2>" +
+    "<p>Take another look before submitting, or submit as-is.</p>" +
+    '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
+    '<div class="btn-row"><button type="button" class="primary" onclick="finishRetakeAttempt()">Submit attempt</button></div>' +
+    "</div>"
+  );
+}
+
+function reviewRetakeFlaggedQuestion(questionId) {
+  Wizard.reviewQuestionId = questionId;
+  Wizard.stage = "reviewing-one";
+  render();
+}
+
+function renderRetakeReviewOne(bookId, chapterId, chapter) {
+  const questionId = Wizard.reviewQuestionId;
+  const question = Store.questions.find((q) => q.id === questionId);
+  const entry = Wizard.responses[questionId] || { chosen: [], flagged: false };
+  const num = chapter.questionOrder.indexOf(questionId) + 1;
+
+  mount(
+    "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
+    '<p class="wizard-progress">Reviewing question ' + num + "</p>" +
+    '<div class="card">' +
+    renderAnswerFieldset(question.type, question.config, entry.chosen) +
+    flagCheckboxHtml(entry.flagged, "Still not sure &mdash; keep this question flagged") +
+    (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
+    '<div class="btn-row">' +
+    '<button type="button" class="primary" onclick="saveRetakeReviewedQuestion()">Save and return to flagged list</button>' +
+    "</div>" +
+    "</div>"
+  );
+}
+
+function saveRetakeReviewedQuestion() {
+  const questionId = Wizard.reviewQuestionId;
+  const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+  const flagged = document.getElementById("flag-question").checked;
+
+  if (checked.length === 0 && !flagged) {
+    Wizard.error = "Select an answer, or keep this question flagged.";
+    render();
+    return;
+  }
+  Wizard.error = null;
+  Wizard.responses[questionId] = { chosen: checked, flagged };
+  Wizard.reviewQuestionId = null;
+  Wizard.stage = "flagged-review";
   render();
 }
 
@@ -570,8 +730,8 @@ function renderReview(bookId, chapterId, attemptId) {
   const rows = attempt.responses.map((response, idx) => {
     const question = Store.questions.find((q) => q.id === response.questionId);
     const chosenLabel = response.chosen.length
-      ? response.chosen.map(formatAnswerValue).join(", ")
-      : "(no answer)";
+      ? response.chosen.map(formatAnswerValue).join(", ") + (response.flagged ? " (flagged)" : "")
+      : (response.flagged ? "Flagged — no answer given" : "(no answer)");
 
     let correctInput = "";
     if (question.type === "mcq") {
