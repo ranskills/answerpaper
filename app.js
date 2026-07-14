@@ -1,5 +1,7 @@
 /* Central store, persistence, and mutation functions. No DOM rendering here. */
 
+const APP_VERSION = "v0.1.0";
+
 const STORAGE_KEY = "answerpaper.store.v1";
 
 function emptyStore() {
@@ -221,6 +223,7 @@ function navigate(hash) {
 
 window.addEventListener("hashchange", () => render());
 window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("version-tag").textContent = APP_VERSION;
   document.getElementById("export-btn").addEventListener("click", exportData);
   document.getElementById("import-input").addEventListener("change", (e) => {
     const file = e.target.files[0];
