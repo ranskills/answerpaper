@@ -30,6 +30,19 @@ function saveStore() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(Store));
 }
 
+function allDataCounts() {
+  return {
+    bookCount: Store.books.length,
+    chapterCount: Store.chapters.length,
+    attemptCount: Store.attempts.length,
+  };
+}
+
+function resetStore() {
+  Store = emptyStore();
+  saveStore();
+}
+
 /* ---------- Books ---------- */
 
 function addBook(title) {

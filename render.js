@@ -117,11 +117,29 @@ function renderBookList() {
       "</div>"
     : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddBookForm(true)">+ Add book</button></div>';
 
+  const wipeLink = Store.books.length
+    ? '<p class="wipe-data-row"><button type="button" class="link-danger" onclick="promptResetAllData()">Clear all data</button></p>'
+    : "";
+
   mount(
     "<h1>Books</h1>" +
     addForm +
-    '<div class="card-list">' + (cards || '<div class="card"><p>No books yet.</p></div>') + "</div>"
+    '<div class="card-list">' + (cards || '<div class="card"><p>No books yet.</p></div>') + "</div>" +
+    wipeLink
   );
+}
+
+function promptResetAllData() {
+  const counts = allDataCounts();
+  const ok = confirm(
+    "Delete ALL data — " + counts.bookCount + " book(s), " + counts.chapterCount +
+    " chapter(s), " + counts.attemptCount + " attempt(s) total? This cannot be undone. " +
+    "Consider using Export first if you want a backup."
+  );
+  if (ok) {
+    resetStore();
+    renderBookList();
+  }
 }
 
 function toggleAddBookForm(open) {

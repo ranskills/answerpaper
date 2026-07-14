@@ -186,6 +186,25 @@ button.danger {
   background: transparent;
 }
 
+button.link-danger {
+  min-height: auto;
+  padding: var(--space-1) 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  font-size: 0.9rem;
+}
+
+button.link-danger:hover {
+  color: var(--error);
+  background: none;
+}
+
+.wipe-data-row {
+  margin-top: var(--space-5);
+}
+
 .btn-row {
   display: flex;
   gap: var(--space-2);
