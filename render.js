@@ -115,7 +115,7 @@ function renderHome() {
     '<div class="card">' +
     "<h2>Recent activity</h2>" +
     (attempts.length
-      ? '<div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Date</th><th>Score</th></tr></thead><tbody>' + rows + "</tbody></table></div>"
+      ? '<div class="table-wrap"><table><thead><tr><th scope="col">Chapter</th><th scope="col">Date</th><th scope="col">Score</th></tr></thead><tbody>' + rows + "</tbody></table></div>"
       : "<p>No attempts yet. <a href=\"#/books\">Start with your books</a>.</p>") +
     "</div>" +
     (Store.books.length === 0 ? '<div class="btn-row"><a class="btn primary" href="#/books">Get started</a></div>' : "")
@@ -135,25 +135,25 @@ function renderBookList() {
     const chapterCount = Store.chapters.filter((c) => c.bookId === book.id).length;
     if (uiState.renameBookId === book.id) {
       return (
-        '<div class="card">' +
+        '<li class="card">' +
         '<form onsubmit="return handleRenameBook(event,\'' + book.id + '\')">' +
         '<label for="rename-book-title">Rename book</label>' +
         '<input id="rename-book-title" type="text" value="' + esc(book.title) + '" required autofocus />' +
         '<div class="btn-row">' +
         '<button type="submit" class="primary">Save</button>' +
         '<button type="button" onclick="toggleRenameBookForm(null)">Cancel</button>' +
-        "</div></form></div>"
+        "</div></form></li>"
       );
     }
     return (
-      '<div class="card">' +
-      '<a class="card-link" href="#/books/' + book.id + '/chapters"><h3>' + esc(book.title) + "</h3></a>" +
+      '<li class="card">' +
+      '<a class="card-link" href="#/books/' + book.id + '/chapters"><h2>' + esc(book.title) + "</h2></a>" +
       '<p class="card-meta">' + pluralize(chapterCount, "chapter") + "</p>" +
       '<div class="btn-row">' +
       '<button type="button" onclick="toggleRenameBookForm(\'' + book.id + '\')">Rename</button>' +
       '<button type="button" class="danger" onclick="promptDeleteBook(\'' + book.id + '\')">Delete</button>' +
       "</div>" +
-      "</div>"
+      "</li>"
     );
   }).join("");
 
@@ -176,7 +176,7 @@ function renderBookList() {
     "<h1>Books</h1>" +
     (Store.books.length ? "" : '<p class="onboarding-hint">Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.</p>') +
     addForm +
-    '<div class="card-list">' + (cards || '<div class="card"><p>No books yet.</p></div>') + "</div>" +
+    (cards ? '<ul class="card-list">' + cards + "</ul>" : '<div class="card"><p>No books yet.</p></div>') +
     wipeLink
   );
 }
@@ -251,25 +251,25 @@ function renderChapterList(bookId) {
     const attemptCount = Store.attempts.filter((a) => a.chapterId === chapter.id).length;
     if (uiState.renameChapterId === chapter.id) {
       return (
-        '<div class="card">' +
+        '<li class="card">' +
         '<form onsubmit="return handleRenameChapter(event,\'' + bookId + '\',\'' + chapter.id + '\')">' +
         '<label for="rename-chapter-title">Rename chapter</label>' +
         '<input id="rename-chapter-title" type="text" value="' + esc(chapter.title) + '" required autofocus />' +
         '<div class="btn-row">' +
         '<button type="submit" class="primary">Save</button>' +
         '<button type="button" onclick="toggleRenameChapterForm(null, \'' + bookId + '\')">Cancel</button>' +
-        "</div></form></div>"
+        "</div></form></li>"
       );
     }
     return (
-      '<div class="card">' +
-      '<a class="card-link" href="#/books/' + bookId + '/chapters/' + chapter.id + '"><h3>' + esc(chapter.title) + "</h3></a>" +
+      '<li class="card">' +
+      '<a class="card-link" href="#/books/' + bookId + '/chapters/' + chapter.id + '"><h2>' + esc(chapter.title) + "</h2></a>" +
       '<p class="card-meta">' + pluralize(attemptCount, "attempt") + "</p>" +
       '<div class="btn-row">' +
       '<button type="button" onclick="toggleRenameChapterForm(\'' + chapter.id + '\', \'' + bookId + '\')">Rename</button>' +
       '<button type="button" class="danger" onclick="promptDeleteChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Delete</button>' +
       "</div>" +
-      "</div>"
+      "</li>"
     );
   }).join("");
 
@@ -288,7 +288,7 @@ function renderChapterList(bookId) {
     '<p><a href="#/books">&larr; All books</a></p>' +
     "<h1>" + esc(book.title) + "</h1>" +
     addForm +
-    '<div class="card-list">' + (cards || '<div class="card"><p>No chapters yet.</p></div>') + "</div>"
+    (cards ? '<ul class="card-list">' + cards + "</ul>" : '<div class="card"><p>No chapters yet.</p></div>')
   );
 }
 
@@ -378,7 +378,7 @@ function renderChapterDetail(bookId, chapterId) {
     renderQuestionManageCard(bookId, chapterId, chapter) +
     '<div class="card"><h2>Past attempts</h2>' +
     (attempts.length
-      ? '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Score</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
+      ? '<div class="table-wrap"><table><thead><tr><th scope="col">Date</th><th scope="col">Score</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
       : "<p>No attempts yet.</p>") +
     "</div>"
   );
@@ -418,7 +418,7 @@ function renderQuestionManageCard(bookId, chapterId, chapter) {
     '<div class="card">' +
     "<h2>" + pluralize(questions.length, "Question") + "</h2>" +
     (questions.length
-      ? '<div class="table-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Correct answer</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
+      ? '<div class="table-wrap"><table><thead><tr><th scope="col">#</th><th scope="col">Type</th><th scope="col">Correct answer</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>' + rows + "</tbody></table></div>"
       : "<p>No questions yet.</p>") +
     addForm +
     "</div>"
@@ -1044,7 +1044,7 @@ function renderReview(bookId, chapterId, attemptId) {
 
     return (
       '<div class="card" id="q-card-' + (idx + 1) + '">' +
-      "<h3>Question " + (idx + 1) + '</h3>' +
+      "<h2>Question " + (idx + 1) + '</h2>' +
       "<p>Your answer: <strong>" + esc(chosenLabel) + "</strong> &mdash; <span class=\"" + statusClass + "\">" + statusText + "</span></p>" +
       '<fieldset><legend>Correct answer</legend>' + correctInput + "</fieldset>" +
       '<p class="save-flash" id="save-flash-' + question.id + '" aria-live="polite">' + (isLocked ? "Saved" : "") + "</p>" +
@@ -1114,13 +1114,13 @@ function renderTrends(bookId, chapterId) {
     (chapterSeries.length ? '<div class="card"><h2>Score over time</h2>' + renderScoreLineChart(chapterSeries) + "</div>" : "") +
     '<div class="card"><h2>Weakest questions</h2>' +
     (weakestRows
-      ? '<div class="table-wrap"><table><thead><tr><th>Question</th><th>Incorrect rate</th><th>Graded attempts</th></tr></thead><tbody>' + weakestRows + "</tbody></table></div>"
+      ? '<div class="table-wrap"><table><thead><tr><th scope="col">Question</th><th scope="col">Incorrect rate</th><th scope="col">Graded attempts</th></tr></thead><tbody>' + weakestRows + "</tbody></table></div>"
       : anyGraded
         ? "<p>No incorrect answers yet &mdash; nice work!</p>"
         : "<p>Not enough graded attempts yet.</p>") +
     "</div>" +
     '<div class="card"><h2>Per-question history</h2>' +
-    '<div class="table-wrap"><table><thead><tr><th>Question</th><th>Attempt sequence</th></tr></thead><tbody>' + questionRows + "</tbody></table></div>" +
+    '<div class="table-wrap"><table><thead><tr><th scope="col">Question</th><th scope="col">Attempt sequence</th></tr></thead><tbody>' + questionRows + "</tbody></table></div>" +
     "</div>"
   );
 }

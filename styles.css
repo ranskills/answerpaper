@@ -71,6 +71,18 @@ a {
   color: var(--accent);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link {
   position: absolute;
   left: -999px;
@@ -290,7 +302,9 @@ button.link-inline:hover {
   display: grid;
   gap: var(--space-3);
   grid-template-columns: 1fr;
-  margin-top: var(--space-3);
+  margin: var(--space-3) 0 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 @media (min-width: 640px) {
@@ -303,6 +317,7 @@ button.link-inline:hover {
   box-shadow: 0 0 0 3px var(--accent);
 }
 
+.card h2,
 .card h3 {
   margin-bottom: var(--space-2);
 }
@@ -529,6 +544,13 @@ th, td {
 
   .print-fill-line.short {
     min-width: 40pt;
+  }
+
+  .print-question-list,
+  .print-options {
+    list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
   .print-question {
