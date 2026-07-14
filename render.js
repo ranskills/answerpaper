@@ -849,7 +849,11 @@ function renderTrends(bookId, chapterId) {
 
   const questionRows = chapter.questionOrder.map((qid, idx) => {
     const trend = computeQuestionTrend(Store, qid);
-    const seq = trend.sequence.map((s) => (s.correct === null ? "&ndash;" : s.correct ? "&#10003;" : "&#10007;")).join(" ");
+    const seq = trend.sequence.map((s) => {
+      const statusClass = s.correct === null ? "status-ungraded" : s.correct ? "status-correct" : "status-incorrect";
+      const symbol = s.correct === null ? "&ndash;" : s.correct ? "&#10003;" : "&#10007;";
+      return '<span class="' + statusClass + '">' + symbol + "</span>";
+    }).join(" ");
     return "<tr><td>Question " + (idx + 1) + "</td><td>" + (seq || "No attempts") + "</td></tr>";
   }).join("");
 
