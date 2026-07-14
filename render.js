@@ -118,7 +118,9 @@ function renderHome() {
       ? '<div class="table-wrap"><table><thead><tr><th scope="col">Chapter</th><th scope="col">Date</th><th scope="col">Score</th></tr></thead><tbody>' + rows + "</tbody></table></div>"
       : "<p>No attempts yet. <a href=\"#/books\">Start with your books</a>.</p>") +
     "</div>" +
-    (Store.books.length === 0 ? '<div class="btn-row"><a class="btn primary" href="#/books">Get started</a></div>' : "")
+    (Store.books.length === 0
+      ? '<div class="btn-row"><a class="btn primary" href="#/books">Get started</a><button type="button" onclick="handleLoadSampleData()">Load sample data</button></div>'
+      : "")
   );
 }
 
@@ -174,11 +176,18 @@ function renderBookList() {
 
   mount(
     "<h1>Books</h1>" +
-    (Store.books.length ? "" : '<p class="onboarding-hint">Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.</p>') +
+    (Store.books.length
+      ? ""
+      : '<p class="onboarding-hint">Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.</p>' +
+        '<div class="btn-row"><button type="button" onclick="handleLoadSampleData()">Load sample data</button></div>') +
     addForm +
     (cards ? '<ul class="card-list">' + cards + "</ul>" : '<div class="card"><p>No books yet.</p></div>') +
     wipeLink
   );
+}
+
+function handleLoadSampleData() {
+  loadSampleData();
 }
 
 function promptResetAllData() {
