@@ -403,7 +403,11 @@ function renderNewWizard(bookId, chapterId, chapter) {
       '<label for="q-count">How many questions in this chapter?</label>' +
       '<input id="q-count" type="number" min="1" max="200" value="20" />' +
       '<div class="btn-row"><button type="button" class="primary" onclick="startNewWizardQuestions()">Begin</button></div>' +
-      "</div>"
+      "</div>" +
+      '<p class="wizard-unsure-hint">Not sure how many yet? ' +
+      '<button type="button" class="link-inline" onclick="startNewWizardUnbounded()">Add questions one at a time instead</button>, ' +
+      "and finish whenever you've covered them all." +
+      "</p>"
     );
   }
 
@@ -413,7 +417,8 @@ function renderNewWizard(bookId, chapterId, chapter) {
   const i = Wizard.index;
   const type = Wizard.currentType;
   const config = Wizard.currentConfig;
-  const isLast = i === Wizard.total - 1;
+  const unbounded = Wizard.total === null;
+  const isLast = !unbounded && i === Wizard.total - 1;
   const pendingChosen = Wizard.pendingChosen || [];
   const flaggedSoFar = Wizard.draftAnswers.filter((a) => a.flagged).length;
 
@@ -427,9 +432,15 @@ function renderNewWizard(bookId, chapterId, chapter) {
       ' onchange="wizardUpdateMultiSelect(this.checked)" /><label for="multi-select" style="margin:0">Allow selecting more than one option</label></div>';
   }
 
+  const buttonsHtml = unbounded
+    ? '<button type="button" onclick="wizardCommitQuestion(false)">Add another question</button>' +
+      '<button type="button" class="primary" onclick="wizardCommitQuestion(true)">Finish attempt</button>'
+    : '<button type="button" class="primary" onclick="wizardCommitQuestion(' + isLast + ')">' +
+      (isLast ? "Finish attempt" : "Next question") + "</button>";
+
   mount(
     "<h1>" + esc(chapter.title) + "</h1>" +
-    '<p class="wizard-progress">Question ' + (i + 1) + " of " + Wizard.total +
+    '<p class="wizard-progress">Question ' + (i + 1) + (unbounded ? "" : " of " + Wizard.total) +
     (flaggedSoFar > 0 ? " &middot; " + flaggedSoFar + " flagged" : "") + "</p>" +
     '<div class="card">' +
     '<label for="q-type">Question type</label>' +
@@ -443,8 +454,9 @@ function renderNewWizard(bookId, chapterId, chapter) {
     (Wizard.error ? '<p class="field-error" role="alert">' + esc(Wizard.error) + "</p>" : "") +
     '<div class="btn-row">' +
     (i > 0 ? '<button type="button" onclick="wizardGoBack()">Previous question</button>' : "") +
-    '<button type="button" class="primary" onclick="wizardCommitQuestion(' + isLast + ')">' +
-    (isLast ? "Finish attempt" : "Next question") + "</button></div>" +
+    (unbounded && i > 0 ? '<button type="button" class="danger" onclick="wizardRemoveAndFinish()">Remove this question &amp; finish</button>' : "") +
+    buttonsHtml +
+    "</div>" +
     "</div>"
   );
 }
@@ -470,6 +482,25 @@ function startNewWizardQuestions() {
   Wizard.currentType = "mcq";
   Wizard.currentConfig = Object.assign({}, Wizard.lastMcqConfig, { optionLabels: Wizard.lastMcqConfig.optionLabels.slice() });
   render();
+}
+
+function startNewWizardUnbounded() {
+  Wizard.total = null;
+  Wizard.stage = "questions";
+  Wizard.currentType = "mcq";
+  Wizard.currentConfig = Object.assign({}, Wizard.lastMcqConfig, { optionLabels: Wizard.lastMcqConfig.optionLabels.slice() });
+  render();
+}
+
+function wizardRemoveAndFinish() {
+  if (Wizard.index === 0) return;
+  const anyFlagged = Wizard.draftAnswers.some((a) => a.flagged);
+  if (anyFlagged) {
+    Wizard.stage = "flagged-review";
+    render();
+    return;
+  }
+  finishNewAttempt();
 }
 
 function wizardUpdateType(type) {
