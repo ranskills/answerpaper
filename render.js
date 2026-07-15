@@ -37,7 +37,55 @@ function formatScoreLabel(score) {
 }
 
 function mount(html) {
-  document.getElementById("main").innerHTML = html;
+  const main = document.getElementById("main");
+  const active = document.activeElement;
+  const hadFocusInMain = !!(active && main.contains(active));
+  const focusId = hadFocusInMain && active.id ? active.id : null;
+
+  main.innerHTML = html;
+
+  // Exact match wins first: e.g. changing a wizard step's own config controls
+  // (question type, option count) re-renders the same step, and the control
+  // the user is mid-interaction with keeps the same id, so it should keep focus
+  // rather than being overridden by that step's autofocus marker below.
+  if (focusId) {
+    const restored = document.getElementById(focusId);
+    if (restored) {
+      restored.focus();
+      return;
+    }
+  }
+  // Otherwise, if the new screen declares its own focus target (a fresh
+  // form's first field, a wizard step's progress marker, ...), focus it
+  // explicitly — the native autofocus attribute is only honored by browsers
+  // for markup present at initial parse time, not for innerHTML insertion,
+  // so it's used here purely as a declarative marker for us to act on.
+  const marked = main.querySelector("[autofocus]");
+  if (marked) {
+    marked.focus();
+    return;
+  }
+
+  if (hadFocusInMain) {
+    // Either the focused element had no stable id, or its id (or the element
+    // itself) no longer exists after this mutation (deleted, moved out of
+    // range, replaced by a different step/screen) — move focus to the new
+    // screen's heading rather than silently dropping it to <body>.
+    const heading = main.querySelector("h1");
+    if (heading) {
+      heading.setAttribute("tabindex", "-1");
+      heading.focus();
+    }
+  }
+}
+
+// For actions with an obvious place to return focus to (closing an inline
+// form back to the button that opened it, saving a rename back onto that
+// row's Rename button) — call after the re-render so it overrides mount()'s
+// generic heading fallback, which has no way to know about that specific spot.
+function focusById(id) {
+  const el = document.getElementById(id);
+  if (el) el.focus();
 }
 
 function updateNavActiveState() {
@@ -152,8 +200,8 @@ function renderBookList() {
       '<a class="card-link" href="#/books/' + book.id + '/chapters"><h2>' + esc(book.title) + "</h2></a>" +
       '<p class="card-meta">' + pluralize(chapterCount, "chapter") + "</p>" +
       '<div class="btn-row">' +
-      '<button type="button" onclick="toggleRenameBookForm(\'' + book.id + '\')">Rename</button>' +
-      '<button type="button" class="danger" onclick="promptDeleteBook(\'' + book.id + '\')">Delete</button>' +
+      '<button type="button" id="book-rename-' + book.id + '" onclick="toggleRenameBookForm(\'' + book.id + '\')">Rename</button>' +
+      '<button type="button" id="book-delete-' + book.id + '" class="danger" onclick="promptDeleteBook(\'' + book.id + '\')">Delete</button>' +
       "</div>" +
       "</li>"
     );
@@ -168,7 +216,7 @@ function renderBookList() {
       '<button type="submit" class="primary">Add book</button>' +
       '<button type="button" onclick="toggleAddBookForm(false)">Cancel</button>' +
       "</div></form></div>"
-    : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddBookForm(true)">+ Add book</button></div>';
+    : '<div class="btn-row"><button type="button" id="add-book-toggle" class="primary" onclick="toggleAddBookForm(true)">+ Add book</button></div>';
 
   const wipeLink = Store.books.length
     ? '<p class="wipe-data-row"><button type="button" class="link-danger" onclick="promptResetAllData()">Clear all data</button></p>'
@@ -206,6 +254,7 @@ function promptResetAllData() {
 function toggleAddBookForm(open) {
   uiState.addBookOpen = open;
   renderBookList();
+  if (!open) focusById("add-book-toggle");
 }
 
 function handleAddBook(event) {
@@ -216,12 +265,15 @@ function handleAddBook(event) {
   addBook(title);
   uiState.addBookOpen = false;
   renderBookList();
+  focusById("add-book-toggle");
   return false;
 }
 
 function toggleRenameBookForm(bookId) {
+  const wasRenamingId = uiState.renameBookId;
   uiState.renameBookId = bookId;
   renderBookList();
+  if (bookId === null && wasRenamingId) focusById("book-rename-" + wasRenamingId);
 }
 
 function handleRenameBook(event, bookId) {
@@ -232,6 +284,7 @@ function handleRenameBook(event, bookId) {
   renameBook(bookId, title);
   uiState.renameBookId = null;
   renderBookList();
+  focusById("book-rename-" + bookId);
   return false;
 }
 
@@ -275,8 +328,8 @@ function renderChapterList(bookId) {
       '<a class="card-link" href="#/books/' + bookId + '/chapters/' + chapter.id + '"><h2>' + esc(chapter.title) + "</h2></a>" +
       '<p class="card-meta">' + pluralize(attemptCount, "attempt") + "</p>" +
       '<div class="btn-row">' +
-      '<button type="button" onclick="toggleRenameChapterForm(\'' + chapter.id + '\', \'' + bookId + '\')">Rename</button>' +
-      '<button type="button" class="danger" onclick="promptDeleteChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Delete</button>' +
+      '<button type="button" id="chapter-rename-' + chapter.id + '" onclick="toggleRenameChapterForm(\'' + chapter.id + '\', \'' + bookId + '\')">Rename</button>' +
+      '<button type="button" id="chapter-delete-' + chapter.id + '" class="danger" onclick="promptDeleteChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Delete</button>' +
       "</div>" +
       "</li>"
     );
@@ -291,7 +344,7 @@ function renderChapterList(bookId) {
       '<button type="submit" class="primary">Add chapter</button>' +
       '<button type="button" onclick="toggleAddChapterForm(false, \'' + bookId + '\')">Cancel</button>' +
       "</div></form></div>"
-    : '<div class="btn-row"><button type="button" class="primary" onclick="toggleAddChapterForm(true, \'' + bookId + '\')">+ Add chapter</button></div>';
+    : '<div class="btn-row"><button type="button" id="add-chapter-toggle" class="primary" onclick="toggleAddChapterForm(true, \'' + bookId + '\')">+ Add chapter</button></div>';
 
   mount(
     '<p><a href="#/books">&larr; All books</a></p>' +
@@ -304,6 +357,7 @@ function renderChapterList(bookId) {
 function toggleAddChapterForm(open, bookId) {
   uiState.addChapterOpen = open;
   renderChapterList(bookId);
+  if (!open) focusById("add-chapter-toggle");
 }
 
 function handleAddChapter(event, bookId) {
@@ -314,12 +368,15 @@ function handleAddChapter(event, bookId) {
   addChapter(bookId, title);
   uiState.addChapterOpen = false;
   renderChapterList(bookId);
+  focusById("add-chapter-toggle");
   return false;
 }
 
 function toggleRenameChapterForm(chapterId, bookId) {
+  const wasRenamingId = uiState.renameChapterId;
   uiState.renameChapterId = chapterId;
   renderChapterList(bookId);
+  if (chapterId === null && wasRenamingId) focusById("chapter-rename-" + wasRenamingId);
 }
 
 function handleRenameChapter(event, bookId, chapterId) {
@@ -330,6 +387,7 @@ function handleRenameChapter(event, bookId, chapterId) {
   renameChapter(chapterId, title);
   uiState.renameChapterId = null;
   renderChapterList(bookId);
+  focusById("chapter-rename-" + chapterId);
   return false;
 }
 
@@ -413,15 +471,15 @@ function renderQuestionManageCard(bookId, chapterId, chapter) {
       "<td>" + esc(describeQuestion(q)) + "</td>" +
       "<td>" + (locked ? '<span class="status-correct">Answer set</span>' : '<span class="status-ungraded">No answer yet</span>') + "</td>" +
       "<td class=\"btn-row\">" +
-      (idx > 0 ? '<button type="button" onclick="moveQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\',-1)" aria-label="Move question ' + (idx + 1) + ' up">&uarr;</button>' : "") +
-      (idx < questions.length - 1 ? '<button type="button" onclick="moveQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\',1)" aria-label="Move question ' + (idx + 1) + ' down">&darr;</button>' : "") +
-      '<button type="button" class="danger" onclick="promptDeleteQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\')">Delete</button>' +
+      (idx > 0 ? '<button type="button" id="q-up-' + q.id + '" onclick="moveQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\',-1)" aria-label="Move question ' + (idx + 1) + ' up">&uarr;</button>' : "") +
+      (idx < questions.length - 1 ? '<button type="button" id="q-down-' + q.id + '" onclick="moveQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\',1)" aria-label="Move question ' + (idx + 1) + ' down">&darr;</button>' : "") +
+      '<button type="button" id="q-delete-' + q.id + '" class="danger" onclick="promptDeleteQuestion(\'' + bookId + '\',\'' + chapterId + '\',\'' + q.id + '\')">Delete</button>' +
       "</td></tr>"
     );
   }).join("");
 
   const addForm = uiState.addQuestionOpen ? renderAddQuestionForm(bookId, chapterId) :
-    '<div class="btn-row"><button type="button" onclick="toggleAddQuestionForm(true, \'' + bookId + '\', \'' + chapterId + '\')">+ Add question</button></div>';
+    '<div class="btn-row"><button type="button" id="add-question-toggle" onclick="toggleAddQuestionForm(true, \'' + bookId + '\', \'' + chapterId + '\')">+ Add question</button></div>';
 
   return (
     '<div class="card">' +
@@ -446,7 +504,7 @@ function renderAddQuestionForm(bookId, chapterId) {
   return (
     '<form class="add-question-form" onsubmit="return handleAddQuestion(event, \'' + bookId + '\', \'' + chapterId + '\')">' +
     '<label for="new-q-type">Question type</label>' +
-    '<select id="new-q-type" onchange="manageAddQuestionUpdateType(this.value)">' +
+    '<select id="new-q-type" autofocus onchange="manageAddQuestionUpdateType(this.value)">' +
     '<option value="mcq" ' + (draft.type === "mcq" ? "selected" : "") + '>Multiple choice</option>' +
     '<option value="truefalse" ' + (draft.type === "truefalse" ? "selected" : "") + '>True / False</option>' +
     "</select>" +
@@ -463,6 +521,7 @@ function toggleAddQuestionForm(open, bookId, chapterId) {
   uiState.addQuestionOpen = open;
   uiState.addQuestionDraft = open ? { type: "mcq", config: Object.assign({}, DEFAULT_NEW_QUESTION_CONFIG) } : null;
   renderChapterDetail(bookId, chapterId);
+  if (!open) focusById("add-question-toggle");
 }
 
 function manageAddQuestionUpdateType(type) {
@@ -486,6 +545,7 @@ function handleAddQuestion(event, bookId, chapterId) {
   uiState.addQuestionOpen = false;
   uiState.addQuestionDraft = null;
   renderChapterDetail(bookId, chapterId);
+  focusById("add-question-toggle");
   return false;
 }
 
@@ -634,7 +694,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
       "<h1>" + esc(chapter.title) + " &mdash; new attempt</h1>" +
       '<div class="card">' +
       '<label for="q-count">How many questions in this chapter?</label>' +
-      '<input id="q-count" type="number" min="1" max="200" value="20" />' +
+      '<input id="q-count" type="number" min="1" max="200" value="20" autofocus />' +
       '<div class="btn-row"><button type="button" class="primary" onclick="startNewWizardQuestions()">Begin</button>' +
       '<button type="button" onclick="cancelWizard()">Cancel</button></div>' +
       "</div>" +
@@ -675,7 +735,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
 
   mount(
     "<h1>" + esc(chapter.title) + "</h1>" +
-    '<p class="wizard-progress">Question ' + (i + 1) + (unbounded ? "" : " of " + Wizard.total) +
+    '<p class="wizard-progress" tabindex="-1" autofocus>Question ' + (i + 1) + (unbounded ? "" : " of " + Wizard.total) +
     (flaggedSoFar > 0 ? " &middot; " + flaggedSoFar + " flagged" : "") + "</p>" +
     '<div class="card">' +
     '<label for="q-type">Question type</label>' +
@@ -822,7 +882,7 @@ function renderNewFlaggedReview(bookId, chapterId, chapter) {
   mount(
     "<h1>" + esc(chapter.title) + "</h1>" +
     '<div class="card">' +
-    "<h2>" + pluralize(flaggedIdx.length, "question") + " flagged for review</h2>" +
+    '<h2 tabindex="-1" autofocus>' + pluralize(flaggedIdx.length, "question") + " flagged for review</h2>" +
     "<p>Take another look before submitting, or submit as-is.</p>" +
     '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
     '<div class="btn-row"><button type="button" class="primary" onclick="finishNewAttempt()">Submit attempt</button></div>' +
@@ -843,7 +903,7 @@ function renderNewReviewOne(bookId, chapterId, chapter) {
 
   mount(
     "<h1>" + esc(chapter.title) + "</h1>" +
-    '<p class="wizard-progress">Reviewing question ' + (idx + 1) + "</p>" +
+    '<p class="wizard-progress" tabindex="-1" autofocus>Reviewing question ' + (idx + 1) + "</p>" +
     '<div class="card">' +
     renderAnswerFieldset(q.type, q.config, a.chosen) +
     flagCheckboxHtml(a.flagged, "Still not sure &mdash; keep this question flagged") +
@@ -885,7 +945,7 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
 
   mount(
     "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
-    '<p class="wizard-progress">Question ' + (i + 1) + " of " + chapter.questionOrder.length +
+    '<p class="wizard-progress" tabindex="-1" autofocus>Question ' + (i + 1) + " of " + chapter.questionOrder.length +
     (flaggedSoFar > 0 ? " &middot; " + flaggedSoFar + " flagged" : "") + "</p>" +
     '<div class="card">' +
     renderAnswerFieldset(question.type, question.config, priorEntry.chosen) +
@@ -955,7 +1015,7 @@ function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
   mount(
     "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
     '<div class="card">' +
-    "<h2>" + pluralize(flaggedQids.length, "question") + " flagged for review</h2>" +
+    '<h2 tabindex="-1" autofocus>' + pluralize(flaggedQids.length, "question") + " flagged for review</h2>" +
     "<p>Take another look before submitting, or submit as-is.</p>" +
     '<ul class="flagged-list">' + (items || "<li>None left &mdash; you're all set.</li>") + "</ul>" +
     '<div class="btn-row"><button type="button" class="primary" onclick="finishRetakeAttempt()">Submit attempt</button></div>' +
@@ -977,7 +1037,7 @@ function renderRetakeReviewOne(bookId, chapterId, chapter) {
 
   mount(
     "<h1>" + esc(chapter.title) + " &mdash; retake</h1>" +
-    '<p class="wizard-progress">Reviewing question ' + num + "</p>" +
+    '<p class="wizard-progress" tabindex="-1" autofocus>Reviewing question ' + num + "</p>" +
     '<div class="card">' +
     renderAnswerFieldset(question.type, question.config, entry.chosen) +
     flagCheckboxHtml(entry.flagged, "Still not sure &mdash; keep this question flagged") +
