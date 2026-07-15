@@ -98,6 +98,28 @@ function computeChapterTrend(store, chapterId) {
   return series;
 }
 
+function chapterLastActivity(store, chapterId) {
+  const chapter = store.chapters.find((c) => c.id === chapterId);
+  if (!chapter) return null;
+  let latest = chapter.createdAt;
+  store.attempts.forEach((a) => {
+    if (a.chapterId === chapterId && new Date(a.finishedAt) > new Date(latest)) latest = a.finishedAt;
+  });
+  return latest;
+}
+
+function bookLastActivity(store, bookId) {
+  const book = store.books.find((b) => b.id === bookId);
+  if (!book) return null;
+  let latest = book.createdAt;
+  store.chapters.forEach((c) => {
+    if (c.bookId !== bookId) return;
+    const chapterActivity = chapterLastActivity(store, c.id);
+    if (chapterActivity && new Date(chapterActivity) > new Date(latest)) latest = chapterActivity;
+  });
+  return latest;
+}
+
 function weakestQuestions(store, chapterId, n) {
   const chapter = store.chapters.find((c) => c.id === chapterId);
   if (!chapter) return [];

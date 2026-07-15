@@ -181,7 +181,10 @@ let uiState = {
 
 function renderBookList() {
   document.title = "Books — AnswerPaper";
-  const cards = Store.books.map((book) => {
+  const sortedBooks = Store.books
+    .slice()
+    .sort((a, b) => new Date(bookLastActivity(Store, b.id)) - new Date(bookLastActivity(Store, a.id)));
+  const cards = sortedBooks.map((book) => {
     const chapterCount = Store.chapters.filter((c) => c.bookId === book.id).length;
     if (uiState.renameBookId === book.id) {
       return (
@@ -222,12 +225,17 @@ function renderBookList() {
     ? '<p class="wipe-data-row"><button type="button" class="link-danger" onclick="promptResetAllData()">Clear all data</button></p>'
     : "";
 
+  const sortHint = sortedBooks.length > 1
+    ? '<p class="list-sort-hint">Sorted by recent activity — most recently added or attempted first.</p>'
+    : "";
+
   mount(
     "<h1>Books</h1>" +
     (Store.books.length
       ? ""
       : '<p class="onboarding-hint">Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.</p>' +
         '<div class="btn-row"><button type="button" onclick="handleLoadSampleData()">Load sample data</button></div>') +
+    sortHint +
     addForm +
     (cards ? '<ul class="card-list">' + cards + "</ul>" : '<div class="card"><p>No books yet.</p></div>') +
     wipeLink
@@ -308,7 +316,9 @@ function renderChapterList(bookId) {
   if (!book) return mount('<p>Book not found. <a href="#/books">Go back</a>.</p>');
   document.title = book.title + " — AnswerPaper";
 
-  const chapters = Store.chapters.filter((c) => c.bookId === bookId);
+  const chapters = Store.chapters
+    .filter((c) => c.bookId === bookId)
+    .sort((a, b) => new Date(chapterLastActivity(Store, b.id)) - new Date(chapterLastActivity(Store, a.id)));
   const cards = chapters.map((chapter) => {
     const attemptCount = Store.attempts.filter((a) => a.chapterId === chapter.id).length;
     if (uiState.renameChapterId === chapter.id) {
@@ -346,9 +356,14 @@ function renderChapterList(bookId) {
       "</div></form></div>"
     : '<div class="btn-row"><button type="button" id="add-chapter-toggle" class="primary" onclick="toggleAddChapterForm(true, \'' + bookId + '\')">+ Add chapter</button></div>';
 
+  const sortHint = chapters.length > 1
+    ? '<p class="list-sort-hint">Sorted by recent activity — most recently added or attempted first.</p>'
+    : "";
+
   mount(
     '<p><a href="#/books">&larr; All books</a></p>' +
     "<h1>" + esc(book.title) + "</h1>" +
+    sortHint +
     addForm +
     (cards ? '<ul class="card-list">' + cards + "</ul>" : '<div class="card"><p>No chapters yet.</p></div>')
   );
