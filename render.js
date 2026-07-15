@@ -320,7 +320,30 @@ function renderChapterList(bookId) {
     .filter((c) => c.bookId === bookId)
     .sort((a, b) => new Date(chapterLastActivity(Store, b.id)) - new Date(chapterLastActivity(Store, a.id)));
   const cards = chapters.map((chapter) => {
-    const attemptCount = Store.attempts.filter((a) => a.chapterId === chapter.id).length;
+    const chapterAttempts = Store.attempts.filter((a) => a.chapterId === chapter.id);
+    const attemptCount = chapterAttempts.length;
+    const scores = computeChapterTrend(Store, chapter.id)
+      .map((s) => s.scorePercent)
+      .filter((p) => p !== null);
+    const statsLine = scores.length
+      ? pluralize(attemptCount, "attempt") +
+        " &middot; avg " + Math.round(scores.reduce((sum, p) => sum + p, 0) / scores.length) + "%" +
+        " &middot; best " + Math.max(...scores) + "%"
+      : pluralize(attemptCount, "attempt");
+    let trendLine = "";
+    if (scores.length >= 2) {
+      const recent = scores[scores.length - 1];
+      const priorAvg = scores.slice(0, -1).reduce((sum, p) => sum + p, 0) / (scores.length - 1);
+      if (recent > priorAvg) trendLine = '<span class="status-correct">&uarr; Improving</span>';
+      else if (recent < priorAvg) trendLine = '<span class="status-incorrect">&darr; Declining</span>';
+      else trendLine = '<span class="status-ungraded">&rarr; Steady</span>';
+    }
+    const lastAttemptDate = chapterAttempts.length
+      ? chapterAttempts.reduce((latest, a) => (new Date(a.finishedAt) > new Date(latest) ? a.finishedAt : latest), chapterAttempts[0].finishedAt)
+      : null;
+    const metaLine = statsLine +
+      (lastAttemptDate ? " &middot; last attempt " + formatDateShort(lastAttemptDate) : "") +
+      (trendLine ? " &middot; " + trendLine : "");
     if (uiState.renameChapterId === chapter.id) {
       return (
         '<li class="card">' +
@@ -336,7 +359,7 @@ function renderChapterList(bookId) {
     return (
       '<li class="card">' +
       '<a class="card-link" href="#/books/' + bookId + '/chapters/' + chapter.id + '"><h2>' + esc(chapter.title) + "</h2></a>" +
-      '<p class="card-meta">' + pluralize(attemptCount, "attempt") + "</p>" +
+      '<p class="card-meta">' + metaLine + "</p>" +
       '<div class="btn-row">' +
       '<button type="button" id="chapter-rename-' + chapter.id + '" onclick="toggleRenameChapterForm(\'' + chapter.id + '\', \'' + bookId + '\')">Rename</button>' +
       '<button type="button" id="chapter-delete-' + chapter.id + '" class="danger" onclick="promptDeleteChapter(\'' + bookId + '\',\'' + chapter.id + '\')">Delete</button>' +
