@@ -280,6 +280,13 @@ button.link-inline:hover {
   margin-top: var(--space-3);
 }
 
+.list-sort-hint {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: calc(-1 * var(--space-2));
+  margin-bottom: var(--space-3);
+}
+
 .btn-row {
   display: flex;
   gap: var(--space-2);
