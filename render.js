@@ -480,7 +480,7 @@ function renderChapterDetail(bookId, chapterId) {
       `}
     </div>
     ${chartSeries.length ? html`<div class="card"><h2>Score over time</h2>${renderScoreLineChart(chartSeries)}</div>` : null}
-    ${renderQuestionManageCard(bookId, chapterId, chapter)}
+    ${isFirstTime ? null : renderQuestionManageCard(bookId, chapterId, chapter)}
     <div class="card">
       <h2>Past attempts</h2>
       ${attempts.length
