@@ -759,6 +759,11 @@ function flagCheckbox(checked, label) {
   `;
 }
 
+function keyboardHint(type) {
+  const answerKeys = type === "mcq" ? "the option's letter" : "T or F";
+  return html`<p class="wizard-unsure-hint">Keyboard: press ${answerKeys} to answer, Shift+F to flag, Enter to continue.</p>`;
+}
+
 function renderNewWizard(bookId, chapterId, chapter) {
   if (Wizard.stage === "count") {
     return mount(html`
@@ -800,10 +805,10 @@ function renderNewWizard(bookId, chapterId, chapter) {
   ` : null;
 
   const buttonsHtml = unbounded ? html`
-    <button type="button" onClick=${() => wizardCommitQuestion(false)}>Add another question</button>
-    <button type="button" class="primary" onClick=${() => wizardCommitQuestion(true)}>Finish attempt</button>
+    <button type="button" id="wizard-primary-action" onClick=${() => wizardCommitQuestion(false)}>Add another question</button>
+    <button type="button" id="wizard-secondary-action" class="primary" onClick=${() => wizardCommitQuestion(true)}>Finish attempt</button>
   ` : html`
-    <button type="button" class="primary" onClick=${() => wizardCommitQuestion(isLast)}>${isLast ? "Finish attempt" : "Next question"}</button>
+    <button type="button" id="wizard-primary-action" class="primary" onClick=${() => wizardCommitQuestion(isLast)}>${isLast ? "Finish attempt" : "Next question"}</button>
   `;
 
   mount(html`
@@ -818,9 +823,10 @@ function renderNewWizard(bookId, chapterId, chapter) {
       ${configHtml}
       ${renderAnswerFieldset(type, config, pendingChosen)}
       ${flagCheckbox(Wizard.pendingFlagged, "Not sure yet — flag this question to review before submitting")}
+      ${keyboardHint(type)}
       ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
       <div class="btn-row">
-        ${i > 0 ? html`<button type="button" onClick=${wizardGoBack}>Previous question</button>` : null}
+        ${i > 0 ? html`<button type="button" id="wizard-back-action" onClick=${wizardGoBack}>Previous question</button>` : null}
         ${unbounded && i > 0 ? html`<button type="button" class="danger" onClick=${wizardRemoveAndFinish}>Remove this question & finish</button>` : null}
         ${buttonsHtml}
         <button type="button" onClick=${cancelWizard}>Cancel attempt</button>
@@ -993,9 +999,10 @@ function renderNewReviewOne(bookId, chapterId, chapter) {
     <div class="card">
       ${renderAnswerFieldset(q.type, q.config, a.chosen)}
       ${flagCheckbox(a.flagged, "Still not sure — keep this question flagged")}
+      ${keyboardHint(q.type)}
       ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
       <div class="btn-row">
-        <button type="button" class="primary" onClick=${saveNewReviewedQuestion}>Save and return to flagged list</button>
+        <button type="button" id="wizard-primary-action" class="primary" onClick=${saveNewReviewedQuestion}>Save and return to flagged list</button>
       </div>
     </div>
   `);
@@ -1035,10 +1042,11 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
     <div class="card">
       ${renderAnswerFieldset(question.type, question.config, priorEntry.chosen)}
       ${flagCheckbox(priorEntry.flagged, "Not sure yet — flag this question to review before submitting")}
+      ${keyboardHint(question.type)}
       ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
       <div class="btn-row">
-        ${i > 0 ? html`<button type="button" onClick=${retakeGoBack}>Previous question</button>` : null}
-        <button type="button" class="primary" onClick=${() => retakeCommitQuestion(questionId, isLast)}>${isLast ? "Finish attempt" : "Next question"}</button>
+        ${i > 0 ? html`<button type="button" id="wizard-back-action" onClick=${retakeGoBack}>Previous question</button>` : null}
+        <button type="button" id="wizard-primary-action" class="primary" onClick=${() => retakeCommitQuestion(questionId, isLast)}>${isLast ? "Finish attempt" : "Next question"}</button>
         <button type="button" onClick=${cancelWizard}>Cancel attempt</button>
       </div>
     </div>
@@ -1142,9 +1150,10 @@ function renderRetakeReviewOne(bookId, chapterId, chapter) {
     <div class="card">
       ${renderAnswerFieldset(question.type, question.config, entry.chosen)}
       ${flagCheckbox(entry.flagged, "Still not sure — keep this question flagged")}
+      ${keyboardHint(question.type)}
       ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
       <div class="btn-row">
-        <button type="button" class="primary" onClick=${saveRetakeReviewedQuestion}>Save and return to flagged list</button>
+        <button type="button" id="wizard-primary-action" class="primary" onClick=${saveRetakeReviewedQuestion}>Save and return to flagged list</button>
       </div>
     </div>
   `);
@@ -1341,5 +1350,65 @@ function triggerPrint(chapterId) {
   buildPrintView(chapterId);
   window.print();
 }
+
+/* ---------- Wizard keyboard shortcuts ---------- */
+
+// Accelerators on top of the existing pointer/tab flow, not a replacement --
+// they act on the same ids/handlers the on-screen controls already use, so
+// screen reader / keyboard-only users relying on Tab+Space still work
+// exactly as before.
+function isEditableTarget(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  if (tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (tag === "INPUT") return el.type !== "radio" && el.type !== "checkbox";
+  return !!el.isContentEditable;
+}
+
+function handleWizardKeydown(e) {
+  if (!Wizard) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (isEditableTarget(e.target)) return;
+  // A focused button/link already activates on Enter/Space natively --
+  // don't also fire our own action and double-trigger it.
+  if (e.target && (e.target.tagName === "BUTTON" || e.target.tagName === "A")) return;
+
+  const key = e.key;
+
+  if (e.shiftKey) {
+    if (key.toLowerCase() === "f") {
+      const flag = document.getElementById("flag-question");
+      if (flag) { e.preventDefault(); flag.click(); }
+    } else if (key === "Enter") {
+      const secondary = document.getElementById("wizard-secondary-action");
+      if (secondary) { e.preventDefault(); secondary.click(); }
+    }
+    return;
+  }
+
+  if (/^[a-h]$/i.test(key)) {
+    const opt = document.getElementById("opt-" + key.toUpperCase());
+    if (opt) { e.preventDefault(); opt.click(); return; }
+  }
+  if (key.toLowerCase() === "t") {
+    const opt = document.getElementById("opt-true");
+    if (opt) { e.preventDefault(); opt.click(); return; }
+  }
+  if (key.toLowerCase() === "f") {
+    const opt = document.getElementById("opt-false");
+    if (opt) { e.preventDefault(); opt.click(); return; }
+  }
+  if (key === "Enter") {
+    const primary = document.getElementById("wizard-primary-action");
+    if (primary) { e.preventDefault(); primary.click(); }
+    return;
+  }
+  if (key === "Backspace") {
+    const back = document.getElementById("wizard-back-action");
+    if (back) { e.preventDefault(); back.click(); }
+  }
+}
+
+window.addEventListener("keydown", handleWizardKeydown);
 
 window.render = render;
