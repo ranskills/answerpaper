@@ -1,6 +1,7 @@
 /* Screen rendering. Reads Store, writes into #main via Preact. Full re-render on every change. */
 
-import { html, render as preactRender } from "./vendor/htm-preact.js";
+const html = self.htm.bind(self.preact.h);
+const preactRender = self.preact.render;
 
 function formatDate(iso) {
   const d = new Date(iso);
