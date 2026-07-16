@@ -959,9 +959,21 @@ function renderNewFlaggedReview(bookId, chapterId, chapter) {
       <h2 tabindex="-1" autofocus>${pluralize(flaggedIdx.length, "question")} flagged for review</h2>
       <p>Take another look before submitting, or submit as-is.</p>
       <ul class="flagged-list">${items.length ? items : html`<li>None left — you're all set.</li>`}</ul>
-      <div class="btn-row"><button type="button" class="primary" onClick=${finishNewAttempt}>Submit attempt</button></div>
+      <div class="btn-row"><button type="button" class="primary" onClick=${confirmFinishNewAttempt}>Submit attempt</button></div>
     </div>
   `);
+}
+
+function confirmFinishNewAttempt() {
+  const unanswered = Wizard.draftAnswers.filter((a) => a.flagged && a.chosen.length === 0).length;
+  if (unanswered > 0) {
+    const ok = confirm(
+      pluralize(unanswered, "flagged question") + (unanswered === 1 ? " has" : " have") +
+      " no answer yet. Submit anyway?"
+    );
+    if (!ok) return;
+  }
+  finishNewAttempt();
 }
 
 function reviewNewFlaggedQuestion(idx) {
@@ -1095,9 +1107,21 @@ function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
       <h2 tabindex="-1" autofocus>${pluralize(flaggedQids.length, "question")} flagged for review</h2>
       <p>Take another look before submitting, or submit as-is.</p>
       <ul class="flagged-list">${items.length ? items : html`<li>None left — you're all set.</li>`}</ul>
-      <div class="btn-row"><button type="button" class="primary" onClick=${finishRetakeAttempt}>Submit attempt</button></div>
+      <div class="btn-row"><button type="button" class="primary" onClick=${confirmFinishRetakeAttempt}>Submit attempt</button></div>
     </div>
   `);
+}
+
+function confirmFinishRetakeAttempt() {
+  const unanswered = Object.values(Wizard.responses).filter((r) => r.flagged && r.chosen.length === 0).length;
+  if (unanswered > 0) {
+    const ok = confirm(
+      pluralize(unanswered, "flagged question") + (unanswered === 1 ? " has" : " have") +
+      " no answer yet. Submit anyway?"
+    );
+    if (!ok) return;
+  }
+  finishRetakeAttempt();
 }
 
 function reviewRetakeFlaggedQuestion(questionId) {
