@@ -1,5 +1,11 @@
 /* Builds a blank, answer-free printable view of a chapter's questions. */
 
+function esc(str) {
+  const div = document.createElement("div");
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
 function buildPrintView(chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const root = document.getElementById("print-root");
