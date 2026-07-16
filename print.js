@@ -20,22 +20,29 @@ function buildPrintView(chapterId) {
     let optionsHtml = "";
     if (question.type === "mcq") {
       optionsHtml = question.config.optionLabels.map((label) =>
-        '<span class="print-option"><span class="print-marker"></span>' + esc(label) + "</span>"
+        '<li class="print-option"><span class="print-marker"></span>' + esc(label) + "</li>"
       ).join("");
     } else {
       optionsHtml =
-        '<span class="print-option"><span class="print-marker"></span>True</span>' +
-        '<span class="print-option"><span class="print-marker"></span>False</span>';
+        '<li class="print-option"><span class="print-marker"></span>True</li>' +
+        '<li class="print-option"><span class="print-marker"></span>False</li>';
     }
     return (
-      '<div class="print-question">' +
+      '<li class="print-question">' +
       "<div><strong>Q" + (idx + 1) + ".</strong></div>" +
-      "<div>" + optionsHtml + "</div>" +
-      "</div>"
+      '<ul class="print-options">' + optionsHtml + "</ul>" +
+      "</li>"
     );
   }).join("");
 
   root.innerHTML =
+    '<section aria-label="Printable exam paper">' +
     "<h1>" + esc(book ? book.title : "") + " &mdash; " + esc(chapter.title) + "</h1>" +
-    questionsHtml;
+    '<div class="print-header-block">' +
+    '<span class="print-field">Name: <span class="print-fill-line"></span></span>' +
+    '<span class="print-field">Date: <span class="print-fill-line"></span></span>' +
+    '<span class="print-field">Score: <span class="print-fill-line short"></span> of ' + chapter.questionOrder.length + "</span>" +
+    "</div>" +
+    '<ol class="print-question-list">' + questionsHtml + "</ol>" +
+    "</section>";
 }

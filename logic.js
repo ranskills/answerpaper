@@ -28,6 +28,31 @@ function setCorrectAnswer(store, questionId, correctAnswer) {
   });
 }
 
+function computeAttemptScore(store, attempt) {
+  let lockedCount = 0, correctCount = 0, unansweredCount = 0, trulyUngradedCount = 0;
+  attempt.responses.forEach((response) => {
+    const question = store.questions.find((q) => q.id === response.questionId);
+    if (!question || question.correctAnswer === null || question.correctAnswer === undefined) {
+      trulyUngradedCount += 1;
+      return;
+    }
+    lockedCount += 1;
+    if (response.chosen.length === 0) {
+      unansweredCount += 1;
+      return;
+    }
+    if (response.correct) correctCount += 1;
+  });
+  return {
+    lockedCount,
+    correctCount,
+    unansweredCount,
+    trulyUngradedCount,
+    totalCount: attempt.responses.length,
+    scorePercent: lockedCount ? Math.round((correctCount / lockedCount) * 100) : null,
+  };
+}
+
 function attemptsForChapter(store, chapterId) {
   return store.attempts
     .filter((a) => a.chapterId === chapterId)
@@ -40,10 +65,13 @@ function computeQuestionTrend(store, questionId) {
   if (!question) return { sequence: [], firstAttemptCorrect: null, mostRecentCorrect: null };
   const attempts = attemptsForChapter(store, question.chapterId);
   const sequence = [];
+  const isLocked = question.correctAnswer !== null && question.correctAnswer !== undefined;
   attempts.forEach((attempt) => {
     const response = attempt.responses.find((r) => r.questionId === questionId);
     if (response) {
-      sequence.push({ attemptId: attempt.id, date: attempt.finishedAt, correct: response.correct });
+      const unanswered = response.chosen.length === 0;
+      const correct = isLocked && unanswered ? false : response.correct;
+      sequence.push({ attemptId: attempt.id, date: attempt.finishedAt, correct, unanswered });
     }
   });
   return {
@@ -56,18 +84,40 @@ function computeQuestionTrend(store, questionId) {
 function computeChapterTrend(store, chapterId) {
   const attempts = attemptsForChapter(store, chapterId);
   const series = attempts.map((attempt) => {
-    const graded = attempt.responses.filter((r) => r.correct !== null);
-    const correctCount = graded.filter((r) => r.correct === true).length;
-    const scorePercent = graded.length ? Math.round((correctCount / graded.length) * 100) : null;
+    const score = computeAttemptScore(store, attempt);
     return {
       attemptId: attempt.id,
       date: attempt.finishedAt,
-      scorePercent,
-      gradedCount: graded.length,
+      scorePercent: score.scorePercent,
+      gradedCount: score.lockedCount,
       totalCount: attempt.responses.length,
+      unansweredCount: score.unansweredCount,
+      trulyUngradedCount: score.trulyUngradedCount,
     };
   });
   return series;
+}
+
+function chapterLastActivity(store, chapterId) {
+  const chapter = store.chapters.find((c) => c.id === chapterId);
+  if (!chapter) return null;
+  let latest = chapter.createdAt;
+  store.attempts.forEach((a) => {
+    if (a.chapterId === chapterId && new Date(a.finishedAt) > new Date(latest)) latest = a.finishedAt;
+  });
+  return latest;
+}
+
+function bookLastActivity(store, bookId) {
+  const book = store.books.find((b) => b.id === bookId);
+  if (!book) return null;
+  let latest = book.createdAt;
+  store.chapters.forEach((c) => {
+    if (c.bookId !== bookId) return;
+    const chapterActivity = chapterLastActivity(store, c.id);
+    if (chapterActivity && new Date(chapterActivity) > new Date(latest)) latest = chapterActivity;
+  });
+  return latest;
 }
 
 function weakestQuestions(store, chapterId, n) {
