@@ -292,6 +292,7 @@ button.link-inline:hover {
   gap: var(--space-2);
   flex-wrap: wrap;
   margin-top: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 /* ---------- Cards ---------- */
@@ -309,6 +310,7 @@ button.link-inline:hover {
 
 .card .btn-row {
   margin-top: auto;
+  margin-bottom: 0;
   padding-top: var(--space-3);
 }
 
