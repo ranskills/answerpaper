@@ -41,6 +41,7 @@ Key invariants:
 - `questionOrder` on the chapter (not an order field on the question) is the single source of truth for question numbering — both the wizard and the print view number questions by this array, not by insertion order.
 - Editing a question's `correctAnswer` must regrade **every** past attempt's response for that question, not just future ones — this is what `setCorrectAnswer` in `logic.js` does. Don't special-case "already graded" attempts when editing.
 - The whole `Store` object is the export/import envelope. The `version` field exists for future migrations — bump it if the shape changes in a breaking way.
+- `attempt.startedAt` is captured when the wizard is first opened for that attempt (`Wizard.startedAt` in `render.js`), not at commit time — `finishedAt - startedAt` is how attempt duration (shown on the chapter detail Past Attempts table) is derived. Wall-clock, so it includes any time the wizard sat open/unattended; there's no pause/resume tracking.
 
 ## State management
 

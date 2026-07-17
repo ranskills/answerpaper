@@ -132,7 +132,7 @@ function deleteChapter(chapterId) {
 
 /* ---------- Attempts ---------- */
 
-function commitNewAttempt(chapterId, questionDefs, answers) {
+function commitNewAttempt(chapterId, questionDefs, answers, startedAt) {
   // questionDefs: [{type, config}], answers: [{chosen: [...], flagged}], same order/length
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const questionIds = [];
@@ -152,7 +152,7 @@ function commitNewAttempt(chapterId, questionDefs, answers) {
   const attempt = {
     id: uid("a"),
     chapterId,
-    startedAt: new Date().toISOString(),
+    startedAt: startedAt || new Date().toISOString(),
     finishedAt: new Date().toISOString(),
     responses: questionIds.map((qid, i) => ({
       questionId: qid,
@@ -166,7 +166,7 @@ function commitNewAttempt(chapterId, questionDefs, answers) {
   return attempt;
 }
 
-function commitRetakeAttempt(chapterId, responsesByQuestionId) {
+function commitRetakeAttempt(chapterId, responsesByQuestionId, startedAt) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const responses = chapter.questionOrder.map((qid) => {
     const question = Store.questions.find((q) => q.id === qid);
@@ -177,7 +177,7 @@ function commitRetakeAttempt(chapterId, responsesByQuestionId) {
   const attempt = {
     id: uid("a"),
     chapterId,
-    startedAt: new Date().toISOString(),
+    startedAt: startedAt || new Date().toISOString(),
     finishedAt: new Date().toISOString(),
     responses,
   };
@@ -275,10 +275,10 @@ function importData(file, onDone) {
 
 /* ---------- Sample data ---------- */
 
-function backdateAttempt(attempt, daysAgo) {
-  const iso = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString();
-  attempt.startedAt = iso;
-  attempt.finishedAt = iso;
+function backdateAttempt(attempt, daysAgo, durationMinutes) {
+  const finished = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
+  attempt.finishedAt = new Date(finished).toISOString();
+  attempt.startedAt = new Date(finished - (durationMinutes || 0) * 60 * 1000).toISOString();
   saveStore();
 }
 
@@ -300,7 +300,7 @@ function loadSampleData() {
     { chosen: ["A"], flagged: false },
     { chosen: ["B"], flagged: false },
   ]);
-  backdateAttempt(attempt1, 14);
+  backdateAttempt(attempt1, 14, 9);
 
   const [q1, q2, q3, q4] = ch1.questionOrder;
   applyCorrectAnswer(q1, ["B"]);
@@ -318,7 +318,7 @@ function loadSampleData() {
     [q4]: { chosen: ["A"], flagged: false },
     [q5]: { chosen: [], flagged: true },
   });
-  backdateAttempt(attempt2, 7);
+  backdateAttempt(attempt2, 7, 6);
 
   const attempt3 = commitRetakeAttempt(ch1.id, {
     [q1]: { chosen: ["B"], flagged: false },
@@ -327,7 +327,7 @@ function loadSampleData() {
     [q4]: { chosen: ["A", "C"], flagged: false },
     [q5]: { chosen: [], flagged: true },
   });
-  backdateAttempt(attempt3, 0);
+  backdateAttempt(attempt3, 0, 5);
 
   const ch2 = addChapter(book.id, "Chapter 2: Learning & Memory");
   const ch2Defs = [
@@ -342,7 +342,7 @@ function loadSampleData() {
     { chosen: ["true"], flagged: false },
     { chosen: ["A"], flagged: false },
   ]);
-  backdateAttempt(ch2Attempt, 3);
+  backdateAttempt(ch2Attempt, 3, 7);
 
   const [r1, r2, r3] = ch2.questionOrder;
   applyCorrectAnswer(r1, ["C"]);
@@ -372,7 +372,7 @@ function loadSampleData() {
     { chosen: ["true"], flagged: false },
     { chosen: ["D"], flagged: false },
   ]);
-  backdateAttempt(historyAttempt, 5);
+  backdateAttempt(historyAttempt, 5, 8);
   const [h1, h2, h3, h4] = historyCh.questionOrder;
   applyCorrectAnswer(h1, ["C"]);
   applyCorrectAnswer(h2, ["B"]);
@@ -396,7 +396,7 @@ function loadSampleData() {
     { chosen: ["C"], flagged: false },
     { chosen: ["A"], flagged: false },
   ]);
-  backdateAttempt(chemAttempt1, 12);
+  backdateAttempt(chemAttempt1, 12, 11);
   const [c1, c2, c3, c4] = chemCh.questionOrder;
   applyCorrectAnswer(c1, ["B"]);
   applyCorrectAnswer(c2, ["A"]);
@@ -409,7 +409,7 @@ function loadSampleData() {
     [c3]: { chosen: ["C"], flagged: false },
     [c4]: { chosen: ["D"], flagged: false },
   });
-  backdateAttempt(chemAttempt2, 6);
+  backdateAttempt(chemAttempt2, 6, 6);
 
   const chemAttempt3 = commitRetakeAttempt(chemCh.id, {
     [c1]: { chosen: ["B"], flagged: false },
@@ -417,7 +417,7 @@ function loadSampleData() {
     [c3]: { chosen: ["D"], flagged: false },
     [c4]: { chosen: ["D"], flagged: false },
   });
-  backdateAttempt(chemAttempt3, 1);
+  backdateAttempt(chemAttempt3, 1, 4);
 
   // "Spanish Vocabulary" — a mostly true/false chapter, one attempt,
   // fully correct, with a flag left on a question the user still nailed.
@@ -433,7 +433,7 @@ function loadSampleData() {
     { chosen: ["false"], flagged: true },
     { chosen: ["B"], flagged: false },
   ]);
-  backdateAttempt(spanishAttempt, 2);
+  backdateAttempt(spanishAttempt, 2, 3);
   const [s1, s2, s3] = spanishCh.questionOrder;
   applyCorrectAnswer(s1, ["true"]);
   applyCorrectAnswer(s2, ["false"]);

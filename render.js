@@ -13,6 +13,17 @@ function formatDateShort(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function formatDuration(startedAt, finishedAt) {
+  const ms = new Date(finishedAt) - new Date(startedAt);
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const totalMinutes = Math.round(ms / 60000);
+  if (totalMinutes < 1) return "< 1 min";
+  if (totalMinutes < 60) return totalMinutes + " min";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours + "h " + minutes + "m";
+}
+
 function formatAnswerValue(value) {
   if (value === "true") return "True";
   if (value === "false") return "False";
@@ -508,6 +519,7 @@ function renderChapterDetail(bookId, chapterId) {
     return html`
       <tr key=${attempt.id}>
         <td>${formatDate(attempt.finishedAt)}</td>
+        <td>${formatDuration(attempt.startedAt, attempt.finishedAt)}</td>
         <td>${score}</td>
         <td><a href=${"#/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review"}>${needsReview ? "Review / grade" : "View / edit answers"}</a></td>
       </tr>
@@ -531,7 +543,7 @@ function renderChapterDetail(bookId, chapterId) {
     <div class="card">
       <h2>Past attempts</h2>
       ${attempts.length
-        ? html`<div class="table-wrap"><table><thead><tr><th scope="col">Date</th><th scope="col">Score</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
+        ? html`<div class="table-wrap"><table><thead><tr><th scope="col">Date</th><th scope="col">Duration</th><th scope="col">Score</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
         : html`<p>No attempts yet.</p>`}
     </div>
   `);
@@ -753,11 +765,13 @@ function renderAttemptWizard(bookId, chapterId) {
         draftQuestions: [], draftAnswers: [],
         currentType: "mcq", currentConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
         error: null, pendingFlagged: false, reviewIndex: null,
+        startedAt: new Date().toISOString(),
       };
     } else {
       Wizard = {
         chapterId, bookId, mode: "retake",
         stage: "questions", index: 0, responses: {}, error: null, reviewQuestionId: null,
+        startedAt: new Date().toISOString(),
       };
     }
   }
@@ -988,7 +1002,7 @@ function wizardCommitQuestion(isLast) {
 }
 
 function finishNewAttempt() {
-  const attempt = commitNewAttempt(Wizard.chapterId, Wizard.draftQuestions, Wizard.draftAnswers);
+  const attempt = commitNewAttempt(Wizard.chapterId, Wizard.draftQuestions, Wizard.draftAnswers, Wizard.startedAt);
   const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
   Wizard = null;
   navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
@@ -1137,7 +1151,7 @@ function retakeCommitQuestion(questionId, isLast) {
 }
 
 function finishRetakeAttempt() {
-  const attempt = commitRetakeAttempt(Wizard.chapterId, Wizard.responses);
+  const attempt = commitRetakeAttempt(Wizard.chapterId, Wizard.responses, Wizard.startedAt);
   const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
   Wizard = null;
   navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
