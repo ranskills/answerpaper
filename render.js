@@ -175,7 +175,7 @@ function renderHome() {
 
 let uiState = {
   addBookOpen: false, addChapterOpen: false, renameBookId: null, renameChapterId: null,
-  addQuestionOpen: false, addQuestionDraft: null, bookFilter: "active",
+  addQuestionOpen: false, addQuestionDraft: null, bookFilter: "active", chapterDetailTab: "attempts",
 };
 
 function renderBookCard(book) {
@@ -528,6 +528,29 @@ function renderChapterDetail(bookId, chapterId) {
 
   const chartSeries = computeChapterTrend(Store, chapterId);
 
+  const attemptsCard = html`
+    <div class="card">
+      <h2>Past attempts</h2>
+      ${attempts.length
+        ? html`<div class="table-wrap"><table><thead><tr><th scope="col">Date</th><th scope="col">Duration</th><th scope="col">Score</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : html`<p>No attempts yet.</p>`}
+    </div>
+  `;
+
+  let detailSection;
+  if (isFirstTime) {
+    detailSection = attemptsCard;
+  } else {
+    const tab = uiState.chapterDetailTab === "questions" ? "questions" : "attempts";
+    detailSection = html`
+      <div class="filter-tabs" role="group" aria-label="Chapter sections">
+        <button type="button" aria-pressed=${tab === "attempts"} onClick=${() => setChapterDetailTab(bookId, chapterId, "attempts")}>Attempts (${attempts.length})</button>
+        <button type="button" aria-pressed=${tab === "questions"} onClick=${() => setChapterDetailTab(bookId, chapterId, "questions")}>Questions (${chapter.questionOrder.length})</button>
+      </div>
+      ${tab === "attempts" ? attemptsCard : renderQuestionManageCard(bookId, chapterId, chapter)}
+    `;
+  }
+
   mount(html`
     <p><a href=${"#/books/" + bookId + "/chapters"}>← ${book.title}</a></p>
     <h1>${chapter.title}</h1>
@@ -539,14 +562,13 @@ function renderChapterDetail(bookId, chapterId) {
       `}
     </div>
     ${chartSeries.length ? html`<div class="card"><h2>Score over time</h2>${renderScoreLineChart(chartSeries)}</div>` : null}
-    ${isFirstTime ? null : renderQuestionManageCard(bookId, chapterId, chapter)}
-    <div class="card">
-      <h2>Past attempts</h2>
-      ${attempts.length
-        ? html`<div class="table-wrap"><table><thead><tr><th scope="col">Date</th><th scope="col">Duration</th><th scope="col">Score</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
-        : html`<p>No attempts yet.</p>`}
-    </div>
+    ${detailSection}
   `);
+}
+
+function setChapterDetailTab(bookId, chapterId, tab) {
+  uiState.chapterDetailTab = tab;
+  renderChapterDetail(bookId, chapterId);
 }
 
 /* ---------- Manage chapter questions ---------- */
