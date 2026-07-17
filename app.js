@@ -48,7 +48,7 @@ function resetStore() {
 /* ---------- Books ---------- */
 
 function addBook(title) {
-  const book = { id: uid("b"), title: title.trim(), createdAt: new Date().toISOString() };
+  const book = { id: uid("b"), title: title.trim(), archived: false, createdAt: new Date().toISOString() };
   Store.books.push(book);
   saveStore();
   return book;
@@ -58,6 +58,22 @@ function renameBook(bookId, title) {
   const book = Store.books.find((b) => b.id === bookId);
   if (book) {
     book.title = title.trim();
+    saveStore();
+  }
+}
+
+function archiveBook(bookId) {
+  const book = Store.books.find((b) => b.id === bookId);
+  if (book) {
+    book.archived = true;
+    saveStore();
+  }
+}
+
+function unarchiveBook(bookId) {
+  const book = Store.books.find((b) => b.id === bookId);
+  if (book) {
+    book.archived = false;
     saveStore();
   }
 }
@@ -341,6 +357,7 @@ function loadSampleData() {
 
   // "World History: Modern Era" — a single attempt, fully graded right
   // away (no ungraded/unanswered questions), showing "View / edit answers".
+  // Archived afterwards, showing what an archived book looks like.
   const historyBook = addBook("World History: Modern Era");
   const historyCh = addChapter(historyBook.id, "Chapter 3: The Cold War");
   const historyDefs = [
@@ -361,6 +378,7 @@ function loadSampleData() {
   applyCorrectAnswer(h2, ["B"]);
   applyCorrectAnswer(h3, ["true"]);
   applyCorrectAnswer(h4, ["D"]);
+  archiveBook(historyBook.id);
 
   // "Organic Chemistry" — three fully-graded retakes with a wavy (not just
   // improving) trend line: 50% -> 100% -> 75%.

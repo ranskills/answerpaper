@@ -295,6 +295,36 @@ button.link-inline:hover {
   margin-bottom: var(--space-3);
 }
 
+.filter-tabs {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.filter-tabs button {
+  min-height: auto;
+  padding: var(--space-2) 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text-secondary);
+  box-shadow: inset 0 -2px 0 transparent;
+}
+
+.filter-tabs button:hover {
+  background: none;
+  color: var(--text);
+}
+
+.filter-tabs button[aria-pressed="true"] {
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 /* ---------- Cards ---------- */
 
 .card {

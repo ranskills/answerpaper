@@ -164,42 +164,62 @@ function renderHome() {
 
 let uiState = {
   addBookOpen: false, addChapterOpen: false, renameBookId: null, renameChapterId: null,
-  addQuestionOpen: false, addQuestionDraft: null,
+  addQuestionOpen: false, addQuestionDraft: null, bookFilter: "active",
 };
+
+function renderBookCard(book) {
+  const chapterCount = Store.chapters.filter((c) => c.bookId === book.id).length;
+  if (uiState.renameBookId === book.id) {
+    return html`
+      <li class="card" key=${book.id}>
+        <form onSubmit=${(e) => handleRenameBook(e, book.id)}>
+          <label for="rename-book-title">Rename book</label>
+          <input id="rename-book-title" type="text" value=${book.title} required autofocus />
+          <div class="btn-row">
+            <button type="submit" class="primary">Save</button>
+            <button type="button" onClick=${() => toggleRenameBookForm(null)}>Cancel</button>
+          </div>
+        </form>
+      </li>
+    `;
+  }
+  return html`
+    <li class="card" key=${book.id}>
+      <a class="card-link" href=${"#/books/" + book.id + "/chapters"}><h2>${book.title}</h2></a>
+      <p class="card-meta">${pluralize(chapterCount, "chapter")}${book.archived ? html` · <span class="status-ungraded">Archived</span>` : null}</p>
+      <div class="btn-row">
+        <button type="button" id=${"book-rename-" + book.id} onClick=${() => toggleRenameBookForm(book.id)}>Rename</button>
+        ${book.archived
+          ? html`<button type="button" id=${"book-unarchive-" + book.id} onClick=${() => handleUnarchiveBook(book.id)}>Unarchive</button>`
+          : html`<button type="button" id=${"book-archive-" + book.id} onClick=${() => handleArchiveBook(book.id)}>Archive</button>`}
+        <button type="button" id=${"book-delete-" + book.id} class="danger" onClick=${() => promptDeleteBook(book.id)}>Delete</button>
+      </div>
+    </li>
+  `;
+}
 
 function renderBookList() {
   document.title = "Books — AnswerPaper";
-  const sortedBooks = Store.books
-    .slice()
-    .sort((a, b) => new Date(bookLastActivity(Store, b.id)) - new Date(bookLastActivity(Store, a.id)));
+  const sortByActivity = (a, b) => new Date(bookLastActivity(Store, b.id)) - new Date(bookLastActivity(Store, a.id));
+  const allBooks = Store.books.slice().sort(sortByActivity);
+  const activeBooks = allBooks.filter((b) => !b.archived);
+  const archivedBooks = allBooks.filter((b) => b.archived);
 
-  const cards = sortedBooks.map((book) => {
-    const chapterCount = Store.chapters.filter((c) => c.bookId === book.id).length;
-    if (uiState.renameBookId === book.id) {
-      return html`
-        <li class="card" key=${book.id}>
-          <form onSubmit=${(e) => handleRenameBook(e, book.id)}>
-            <label for="rename-book-title">Rename book</label>
-            <input id="rename-book-title" type="text" value=${book.title} required autofocus />
-            <div class="btn-row">
-              <button type="submit" class="primary">Save</button>
-              <button type="button" onClick=${() => toggleRenameBookForm(null)}>Cancel</button>
-            </div>
-          </form>
-        </li>
-      `;
-    }
-    return html`
-      <li class="card" key=${book.id}>
-        <a class="card-link" href=${"#/books/" + book.id + "/chapters"}><h2>${book.title}</h2></a>
-        <p class="card-meta">${pluralize(chapterCount, "chapter")}</p>
-        <div class="btn-row">
-          <button type="button" id=${"book-rename-" + book.id} onClick=${() => toggleRenameBookForm(book.id)}>Rename</button>
-          <button type="button" id=${"book-delete-" + book.id} class="danger" onClick=${() => promptDeleteBook(book.id)}>Delete</button>
-        </div>
-      </li>
-    `;
-  });
+  // The filter only matters once there's at least one archived book — otherwise
+  // "All"/"Active" are identical and "Archived" is always empty.
+  const filter = archivedBooks.length ? uiState.bookFilter : "active";
+  const booksForFilter = { all: allBooks, active: activeBooks, archived: archivedBooks }[filter];
+  const cards = booksForFilter.map(renderBookCard);
+
+  const filterBar = archivedBooks.length
+    ? html`
+      <div class="filter-tabs" role="group" aria-label="Filter books">
+        <button type="button" aria-pressed=${filter === "all"} onClick=${() => setBookFilter("all")}>All (${allBooks.length})</button>
+        <button type="button" aria-pressed=${filter === "active"} onClick=${() => setBookFilter("active")}>Active (${activeBooks.length})</button>
+        <button type="button" aria-pressed=${filter === "archived"} onClick=${() => setBookFilter("archived")}>Archived (${archivedBooks.length})</button>
+      </div>
+    `
+    : null;
 
   const addForm = uiState.addBookOpen
     ? html`
@@ -220,9 +240,20 @@ function renderBookList() {
     ? html`<p class="wipe-data-row"><button type="button" class="link-danger" onClick=${promptResetAllData}>Clear all data</button></p>`
     : null;
 
-  const sortHint = sortedBooks.length > 1
+  const sortHint = booksForFilter.length > 1
     ? html`<p class="list-sort-hint">Sorted by recent activity — most recently added or attempted first.</p>`
     : null;
+
+  let booksSection;
+  if (cards.length) {
+    booksSection = html`<ul class="card-list">${cards}</ul>`;
+  } else if (filter === "archived") {
+    booksSection = html`<div class="card"><p>No archived books.</p></div>`;
+  } else if (filter === "active" && archivedBooks.length) {
+    booksSection = html`<div class="card"><p>No active books — all books are archived.</p></div>`;
+  } else {
+    booksSection = html`<div class="card"><p>No books yet.</p></div>`;
+  }
 
   mount(html`
     <h1>Books</h1>
@@ -230,11 +261,27 @@ function renderBookList() {
       <p class="onboarding-hint">Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.</p>
       <div class="btn-row"><button type="button" onClick=${handleLoadSampleData}>Load sample data</button></div>
     ` : null}
+    ${filterBar}
     ${sortHint}
     ${addForm}
-    ${cards.length ? html`<ul class="card-list">${cards}</ul>` : html`<div class="card"><p>No books yet.</p></div>`}
+    ${booksSection}
     ${wipeLink}
   `);
+}
+
+function setBookFilter(filter) {
+  uiState.bookFilter = filter;
+  renderBookList();
+}
+
+function handleArchiveBook(bookId) {
+  archiveBook(bookId);
+  renderBookList();
+}
+
+function handleUnarchiveBook(bookId) {
+  unarchiveBook(bookId);
+  renderBookList();
 }
 
 function handleLoadSampleData() {
@@ -386,7 +433,7 @@ function renderChapterList(bookId) {
 
   mount(html`
     <p><a href="#/books">← All books</a></p>
-    <h1>${book.title}</h1>
+    <h1>${book.title}${book.archived ? html` <span class="status-ungraded">(Archived)</span>` : null}</h1>
     ${sortHint}
     ${addForm}
     ${cards.length ? html`<ul class="card-list">${cards}</ul>` : html`<div class="card"><p>No chapters yet.</p></div>`}

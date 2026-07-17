@@ -28,7 +28,7 @@ Plain files loaded via `<script>` tags in `index.html`, in dependency order — 
 ```
 Store = {
   version: 1,
-  books:     [{ id, title, createdAt }],
+  books:     [{ id, title, archived, createdAt }],
   chapters:  [{ id, bookId, title, questionOrder: [questionId, ...], createdAt }],
   questions: [{ id, chapterId, type: "mcq" | "truefalse", config, correctAnswer }],
   attempts:  [{ id, chapterId, startedAt, finishedAt, responses: [{ questionId, chosen, correct }] }],
