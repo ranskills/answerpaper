@@ -15,15 +15,16 @@
 </script>
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<a class="skip-link" href="#main" id="skip-link">Skip to main content</a>
 
 <header class="app-header no-print">
   <a class="brand" href="#/">AnswerPaper</a>
-  <nav aria-label="Primary">
-    <a href="#/">Home</a>
-    <a href="#/books">Books</a>
-    <a href="#/data">Data</a>
+  <nav aria-label="Primary" id="primary-nav">
+    <a href="#/" id="nav-home">Home</a>
+    <a href="#/books" id="nav-books">Books</a>
+    <a href="#/data" id="nav-data">Data</a>
     <button id="theme-toggle" type="button">Theme: Auto</button>
+    <button id="lang-toggle" type="button">Language: English</button>
   </nav>
 </header>
 
@@ -34,6 +35,7 @@
 <footer class="app-footer no-print">AnswerPaper <span id="version-tag"></span></footer>
 
 <script src="logic.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 <script src="vendor/preact.min.js"></script>
 <script src="vendor/htm.js"></script>

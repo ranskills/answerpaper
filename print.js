@@ -24,24 +24,24 @@ function buildPrintView(chapterId) {
       ).join("");
     } else {
       optionsHtml =
-        '<li class="print-option"><span class="print-marker"></span>True</li>' +
-        '<li class="print-option"><span class="print-marker"></span>False</li>';
+        '<li class="print-option"><span class="print-marker"></span>' + esc(t("common.trueLabel")) + "</li>" +
+        '<li class="print-option"><span class="print-marker"></span>' + esc(t("common.falseLabel")) + "</li>";
     }
     return (
       '<li class="print-question">' +
-      "<div><strong>Q" + (idx + 1) + ".</strong></div>" +
+      "<div><strong>" + esc(t("print.question", { n: idx + 1 })) + "</strong></div>" +
       '<ul class="print-options">' + optionsHtml + "</ul>" +
       "</li>"
     );
   }).join("");
 
   root.innerHTML =
-    '<section aria-label="Printable exam paper">' +
+    '<section aria-label="' + esc(t("print.ariaLabel")) + '">' +
     "<h1>" + esc(book ? book.title : "") + " &mdash; " + esc(chapter.title) + "</h1>" +
     '<div class="print-header-block">' +
-    '<span class="print-field">Name: <span class="print-fill-line"></span></span>' +
-    '<span class="print-field">Date: <span class="print-fill-line"></span></span>' +
-    '<span class="print-field">Score: <span class="print-fill-line short"></span> of ' + chapter.questionOrder.length + "</span>" +
+    '<span class="print-field">' + esc(t("print.name")) + ' <span class="print-fill-line"></span></span>' +
+    '<span class="print-field">' + esc(t("print.date")) + ' <span class="print-fill-line"></span></span>' +
+    '<span class="print-field">' + esc(t("print.score")) + ' <span class="print-fill-line short"></span> ' + esc(t("print.ofTotal", { total: chapter.questionOrder.length })) + "</span>" +
     "</div>" +
     '<ol class="print-question-list">' + questionsHtml + "</ol>" +
     "</section>";

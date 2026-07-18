@@ -35,8 +35,8 @@ function cycleTheme() {
 function updateThemeToggleButton() {
   const btn = document.getElementById("theme-toggle");
   const current = getStoredTheme();
-  const label = current === "light" ? "Light" : current === "dark" ? "Dark" : "Auto";
-  btn.textContent = "Theme: " + label;
+  const label = current === "light" ? t("theme.light") : current === "dark" ? t("theme.dark") : t("theme.auto");
+  btn.textContent = t("theme.label", { mode: label });
 }
 
 function emptyStore() {
@@ -282,7 +282,7 @@ function exportData() {
   a.remove();
   URL.revokeObjectURL(url);
   localStorage.setItem(LAST_EXPORT_KEY, new Date().toISOString());
-  showToast("Exported " + filename);
+  showToast(t("data.exportedToast", { filename }));
 }
 
 function getLastExportAt() {
@@ -304,7 +304,7 @@ function importData(file, onDone) {
     try {
       const parsed = JSON.parse(reader.result);
       if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.books)) {
-        throw new Error("Invalid file format");
+        throw new Error(t("data.invalidFileFormat"));
       }
       Store = Object.assign(emptyStore(), parsed);
       saveStore();
@@ -341,5 +341,8 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("version-tag").textContent = APP_VERSION;
   updateThemeToggleButton();
   document.getElementById("theme-toggle").addEventListener("click", cycleTheme);
+  updateLangToggleButton();
+  updateStaticChrome();
+  document.getElementById("lang-toggle").addEventListener("click", cycleLang);
   render();
 });
