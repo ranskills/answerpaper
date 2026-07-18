@@ -98,6 +98,21 @@ function computeChapterTrend(store, chapterId) {
   return series;
 }
 
+// "improving" | "declining" | "steady" | null (null = fewer than two graded
+// attempts, not enough to compare yet). Compares the most recent graded
+// score against the average of every prior graded score for the chapter.
+function computeChapterScoreTrend(store, chapterId) {
+  const scores = computeChapterTrend(store, chapterId)
+    .map((s) => s.scorePercent)
+    .filter((p) => p !== null);
+  if (scores.length < 2) return null;
+  const recent = scores[scores.length - 1];
+  const priorAvg = scores.slice(0, -1).reduce((sum, p) => sum + p, 0) / (scores.length - 1);
+  if (recent > priorAvg) return "improving";
+  if (recent < priorAvg) return "declining";
+  return "steady";
+}
+
 function chapterLastActivity(store, chapterId) {
   const chapter = store.chapters.find((c) => c.id === chapterId);
   if (!chapter) return null;

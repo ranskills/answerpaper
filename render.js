@@ -48,6 +48,13 @@ function pluralNoun(count, noun) {
   return noun + (count === 1 ? "" : "s");
 }
 
+function renderTrendBadge(trend) {
+  if (trend === "improving") return html`<span class="status-correct">↑ Improving</span>`;
+  if (trend === "declining") return html`<span class="status-incorrect">↓ Declining</span>`;
+  if (trend === "steady") return html`<span class="status-ungraded">→ Steady</span>`;
+  return null;
+}
+
 function formatScoreLabel(score, compact) {
   if (score.lockedCount === 0) return "Ungraded";
   const parts = [score.scorePercent + "%"];
@@ -168,12 +175,13 @@ function renderHome() {
     : null;
 
   const continueChapter = Store.attempts.length ? computeContinueChapter(Store) : null;
+  const continueTrend = continueChapter ? renderTrendBadge(computeChapterScoreTrend(Store, continueChapter.chapter.id)) : null;
   const continueCard = continueChapter ? html`
     <div class="card">
       <h2>Continue studying</h2>
       <p class="card-meta" style="margin: 0"><a href=${"#/books/" + continueChapter.book.id + "/chapters"}>${continueChapter.book.title}</a></p>
       <p style="margin: 0 0 var(--space-2) 0"><a class="card-link" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id}>${continueChapter.chapter.title}</a></p>
-      <p class="card-meta" style="margin: 0">Last attempt: ${formatScoreLabel(computeAttemptScore(Store, continueChapter.attempt), true)} · ${formatDate(continueChapter.attempt.finishedAt)}</p>
+      <p class="card-meta" style="margin: 0">Last attempt: ${formatScoreLabel(computeAttemptScore(Store, continueChapter.attempt), true)} · ${formatDate(continueChapter.attempt.finishedAt)}${continueTrend ? html` · ${continueTrend}` : null}</p>
       <div class="btn-row">
         <a class="btn primary" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id + "/attempt"}>Retake</a>
         <a class="btn" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id + "/trends"}>View trends</a>
@@ -451,14 +459,7 @@ function renderChapterList(bookId) {
         " · avg " + Math.round(scores.reduce((sum, p) => sum + p, 0) / scores.length) + "%" +
         " · best " + Math.max(...scores) + "%"
       : pluralize(attemptCount, "attempt");
-    let trendLine = null;
-    if (scores.length >= 2) {
-      const recent = scores[scores.length - 1];
-      const priorAvg = scores.slice(0, -1).reduce((sum, p) => sum + p, 0) / (scores.length - 1);
-      if (recent > priorAvg) trendLine = html`<span class="status-correct">↑ Improving</span>`;
-      else if (recent < priorAvg) trendLine = html`<span class="status-incorrect">↓ Declining</span>`;
-      else trendLine = html`<span class="status-ungraded">→ Steady</span>`;
-    }
+    const trendLine = renderTrendBadge(computeChapterScoreTrend(Store, chapter.id));
     const lastAttemptDate = chapterAttempts.length
       ? chapterAttempts.reduce((latest, a) => (new Date(a.finishedAt) > new Date(latest) ? a.finishedAt : latest), chapterAttempts[0].finishedAt)
       : null;
