@@ -6,13 +6,13 @@ This file provides guidance to AI coding agents (Claude Code, and other AGENTS.m
 
 A single self-contained static web app (no backend, no login, no build step) for practicing exam-style questions from a book's chapters, grading yourself, retaking chapters, and tracking trends. It's meant to be hosted as-is on GitHub Pages.
 
-The one dependency is Preact + htm, vendored directly into `vendor/` as classic UMD builds (no CDN, no npm, no build step — see `vendor/README.md` for provenance). Every script, including `render.js`, is a plain classic `<script>` (not `type="module"`) — ES module scripts are fetched in CORS mode, which browsers refuse for `file://` origins, and this app is meant to be opened directly from disk with no server. `vendor/preact.min.js`/`vendor/htm.js` attach `self.preact`/`self.htm` globals; `render.js` reads those directly (`const html = self.htm.bind(self.preact.h);`).
+The one dependency is Preact + htm, vendored directly into `assets/js/vendor/` as classic UMD builds (no CDN, no npm, no build step — see `assets/js/vendor/README.md` for provenance). Every script, including `render.js`, is a plain classic `<script>` (not `type="module"`) — ES module scripts are fetched in CORS mode, which browsers refuse for `file://` origins, and this app is meant to be opened directly from disk with no server. `assets/js/vendor/preact.min.js`/`assets/js/vendor/htm.js` attach `self.preact`/`self.htm` globals; `render.js` reads those directly (`const html = self.htm.bind(self.preact.h);`).
 
 There is no build/lint/test command — this is intentional. Verify changes by opening `index.html` directly in a browser and clicking through the flow (or driving it with Playwright/`chromium-cli`, which is how this app was originally verified end-to-end: book → chapter → attempt → review/grade → retake → trends → print).
 
 ## File layout
 
-Plain files loaded via `<script>` tags in `index.html`, in dependency order — no bundler:
+Plain files loaded via `<script>` tags in `index.html`, in dependency order — no bundler. JS lives in `assets/js/`, CSS in `assets/css/`:
 
 - `logic.js` — pure functions only, no DOM access: grading (`gradeResponse`), regrading (`setCorrectAnswer`), trend computation (`computeQuestionTrend`, `computeChapterTrend`, `computeChapterScoreTrend`, `weakestQuestions`), and the Home dashboard aggregates (`computeOverallStats`, `computeStudyStreak`, `computeContinueChapter`, `computeNeedsAttention`). Classic script.
 - `i18n.js` — the string dictionary (`STRINGS.en`, `STRINGS.fr`) and the `t()`/`tn()` lookup functions every UI string goes through (see "Internationalization" below). Loaded before `app.js` since both `app.js` and `render.js` call `t()`/`tn()`.
@@ -20,8 +20,8 @@ Plain files loaded via `<script>` tags in `index.html`, in dependency order — 
 - `render.js` — every screen's render function (Home, Book list, Chapter list, Chapter detail, New Attempt wizard, Review/Grade, Trends), plus the hand-rolled inline-SVG score chart. Reads `Store`, builds a vdom tree with `html` (bound from the vendored `self.htm`/`self.preact` globals) per screen, and hands it to `mount()`, which calls Preact's `render()` into `#main`. Classic script like the others, so `window.render` at the bottom, `Wizard`, `uiState`, and the format helpers are all shared top-level scope with `app.js`.
 - `sample-data.js` — `loadSampleData()` ("Load sample data" button) and its `backdateAttempt()` helper. Pure fixture data built entirely out of `app.js`'s own mutation functions (`addBook`, `commitNewAttempt`, ...) plus a call to `navigate()`/`render()` at the end, so it loads after both `app.js` and `render.js`.
 - `print.js` — `buildPrintView(chapterId)`, builds the print-only DOM from question structure into `#print-root` via plain string `innerHTML` (not Preact — it's a one-shot static build, not interactively re-rendered, so it wasn't worth converting). Has its own tiny `esc()` helper, since it's the only script here doing raw `innerHTML` string-building rather than going through Preact's auto-escaping vdom. Deliberately never touches `correctAnswer` or attempts — it's meant to produce a blank, answer-free paper copy.
-- `styles.css` — design tokens (CSS custom properties) for light/dark mode, app chrome, and `@media print` rules.
-- `vendor/` — vendored Preact + htm classic UMD builds (see `vendor/README.md`). `render.js` binds htm's tagged-template parser to Preact's `h()` itself (`self.htm.bind(self.preact.h)`).
+- `assets/css/styles.css` — design tokens (CSS custom properties) for light/dark mode, app chrome, and `@media print` rules.
+- `assets/js/vendor/` — vendored Preact + htm classic UMD builds (see `assets/js/vendor/README.md`). `render.js` binds htm's tagged-template parser to Preact's `h()` itself (`self.htm.bind(self.preact.h)`).
 
 **htm entity gotcha:** htm's parser does not decode HTML entities anywhere, including static markup — `&amp;`/`&mdash;`/etc. render as the literal text `&amp;` rather than being decoded. Always use the literal Unicode character (`&`, `—`, `←`, `·`, `–`, `✓`, `✗`) directly in template strings instead.
 
