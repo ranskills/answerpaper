@@ -13,15 +13,18 @@ function formatDateShort(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function formatDuration(startedAt, finishedAt) {
-  const ms = new Date(finishedAt) - new Date(startedAt);
-  if (!Number.isFinite(ms) || ms < 0) return "—";
-  const totalMinutes = Math.round(ms / 60000);
+function formatMinutes(totalMinutes) {
   if (totalMinutes < 1) return "< 1 min";
   if (totalMinutes < 60) return totalMinutes + " min";
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return hours + "h " + minutes + "m";
+}
+
+function formatDuration(startedAt, finishedAt) {
+  const ms = new Date(finishedAt) - new Date(startedAt);
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  return formatMinutes(Math.round(ms / 60000));
 }
 
 function formatAnswerValue(value) {
@@ -36,6 +39,13 @@ function formatChosenSummary(chosen) {
 
 function pluralize(count, noun) {
   return count + " " + noun + (count === 1 ? "" : "s");
+}
+
+// Just the plural-aware noun, no count — for a label sitting under a number
+// that's already displayed elsewhere (a stat tile), where repeating the
+// count in the label would be redundant.
+function pluralNoun(count, noun) {
+  return noun + (count === 1 ? "" : "s");
 }
 
 function formatScoreLabel(score, compact) {
@@ -157,9 +167,48 @@ function renderHome() {
     ? html`<p class="onboarding-hint">New here? The workflow is: create a <strong>book</strong> → add a <strong>chapter</strong> to it → take an <strong>attempt</strong> on the chapter → grade your answers → retake and track trends over time.</p>`
     : null;
 
+  const stats = Store.books.length ? computeOverallStats(Store) : null;
+  const statTiles = stats ? html`
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="stat-value">${stats.bookCount} <span class="stat-value-secondary">/ ${stats.chapterCount}</span></div>
+        <div class="stat-label">Books / Chapters</div>
+      </div>
+      <div class="stat-tile"><div class="stat-value">${stats.attemptCount}</div><div class="stat-label">${pluralNoun(stats.attemptCount, "Attempt")}</div></div>
+      <div class="stat-tile"><div class="stat-value">${stats.streakDays}</div><div class="stat-label">Day streak</div></div>
+      <div class="stat-tile"><div class="stat-value">${formatMinutes(stats.totalStudyMinutes)}</div><div class="stat-label">Time studied</div></div>
+    </div>
+  ` : null;
+
+  const needsAttentionItemText = {
+    "not-started": () => "Not started yet",
+    "ungraded": (item) => pluralize(item.ungradedCount, "question") + " not yet graded",
+    "flagged": (item) => pluralize(item.flaggedWrongCount, "flagged answer") + " to review",
+  };
+  const needsAttention = computeNeedsAttention(Store, 5);
+  const needsAttentionCard = needsAttention.length ? html`
+    <div class="card">
+      <h2>Needs attention</h2>
+      <ul class="plain-list">
+        ${needsAttention.map((item) => {
+          const href = item.type === "not-started"
+            ? "#/books/" + item.book.id + "/chapters/" + item.chapter.id
+            : "#/books/" + item.book.id + "/chapters/" + item.chapter.id + "/attempt/" + item.attemptId + "/review";
+          return html`
+            <li key=${item.chapter.id}>
+              <a href=${href}>${item.book.title} › ${item.chapter.title}</a> <span class="status-ungraded">· ${needsAttentionItemText[item.type](item)}</span>
+            </li>
+          `;
+        })}
+      </ul>
+    </div>
+  ` : null;
+
   mount(html`
     <h1>Home</h1>
     ${onboarding}
+    ${statTiles}
+    ${needsAttentionCard}
     <div class="card">
       <h2>Recent activity</h2>
       ${attempts.length
