@@ -38,9 +38,10 @@ function pluralize(count, noun) {
   return count + " " + noun + (count === 1 ? "" : "s");
 }
 
-function formatScoreLabel(score) {
+function formatScoreLabel(score, compact) {
   if (score.lockedCount === 0) return "Ungraded";
   const parts = [score.scorePercent + "%"];
+  if (compact) return parts[0];
   const notes = [];
   if (score.unansweredCount > 0) notes.push(score.unansweredCount + " unanswered");
   if (score.trulyUngradedCount > 0) notes.push(pluralize(score.trulyUngradedCount, "question") + " not yet graded");
@@ -142,7 +143,7 @@ function renderHome() {
     const chapter = Store.chapters.find((c) => c.id === attempt.chapterId);
     if (!chapter) return null;
     const book = Store.books.find((b) => b.id === chapter.bookId);
-    const score = formatScoreLabel(computeAttemptScore(Store, attempt));
+    const score = formatScoreLabel(computeAttemptScore(Store, attempt), true);
     return html`
       <tr key=${attempt.id}>
         <td><a href=${"#/books/" + book.id + "/chapters/" + chapter.id}>${book.title} › ${chapter.title}</a></td>
