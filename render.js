@@ -177,6 +177,7 @@ function renderHome() {
 let uiState = {
   addBookOpen: false, addChapterOpen: false, renameBookId: null, renameChapterId: null,
   addQuestionOpen: false, addQuestionDraft: null, bookFilter: "active", chapterDetailTab: "attempts",
+  reviewCompact: false, compactEditQuestionId: null,
 };
 
 function renderBookCard(book) {
@@ -1276,12 +1277,21 @@ function renderReview(bookId, chapterId, attemptId) {
   }).length;
   const correctCount = attempt.responses.filter((r) => r.correct === true).length;
 
+  const compact = uiState.reviewCompact;
+
   const rows = attempt.responses.map((response, idx) => {
     const question = Store.questions.find((q) => q.id === response.questionId);
     const chosenLabel = response.chosen.length
       ? response.chosen.map(formatAnswerValue).join(", ") + (response.flagged ? " (flagged)" : "")
       : (response.flagged ? "Flagged — no answer given" : "(no answer)");
     const isLocked = question.correctAnswer !== null && question.correctAnswer !== undefined;
+    const unanswered = response.chosen.length === 0;
+    const statusClass = !isLocked ? "status-ungraded" : unanswered ? "status-incorrect" : response.correct ? "status-correct" : "status-incorrect";
+    const statusText = !isLocked ? "Not yet graded" : unanswered ? "Unanswered" : response.correct ? "Correct" : "Incorrect";
+
+    if (compact) {
+      return renderCompactReviewRow(bookId, chapterId, attemptId, question, idx, chosenLabel, statusClass, statusText, isLocked);
+    }
 
     let correctInput;
     if (question.type === "mcq") {
@@ -1313,10 +1323,6 @@ function renderReview(bookId, chapterId, attemptId) {
       `;
     }
 
-    const unanswered = response.chosen.length === 0;
-    const statusClass = !isLocked ? "status-ungraded" : unanswered ? "status-incorrect" : response.correct ? "status-correct" : "status-incorrect";
-    const statusText = !isLocked ? "Not yet graded" : unanswered ? "Unanswered" : response.correct ? "Correct" : "Incorrect";
-
     return html`
       <div class="card" id=${"q-card-" + (idx + 1)} key=${response.questionId}>
         <h2>Question ${idx + 1}</h2>
@@ -1332,7 +1338,13 @@ function renderReview(bookId, chapterId, attemptId) {
     <h1>Review & grade</h1>
     <p class="wizard-progress">Graded ${gradedCount} of ${attempt.responses.length} · ${correctCount} correct so far</p>
     <p>Pick the correct answer for each question — it saves immediately. Editing a correct answer later will re-grade every past attempt for that question.</p>
-    ${rows}
+    <div class="filter-tabs" role="group" aria-label="Review display mode">
+      <button type="button" aria-pressed=${!compact} onClick=${() => setReviewCompact(bookId, chapterId, attemptId, false)}>Detailed</button>
+      <button type="button" aria-pressed=${compact} onClick=${() => setReviewCompact(bookId, chapterId, attemptId, true)}>Compact</button>
+    </div>
+    ${compact
+      ? html`<div class="table-wrap"><table><thead><tr><th scope="col">#</th><th scope="col">Your answer</th><th scope="col">Status</th><th scope="col">Correct answer</th></tr></thead><tbody>${rows}</tbody></table></div>`
+      : rows}
   `);
 
   if (scrollToQuestionNum !== null) {
@@ -1354,6 +1366,70 @@ function handleCorrectAnswerChange(questionId, bookId, chapterId, attemptId) {
   renderReview(bookId, chapterId, attemptId);
   const flash = document.getElementById("save-flash-" + questionId);
   if (flash) flash.textContent = "Saved ✓";
+}
+
+function setReviewCompact(bookId, chapterId, attemptId, compact) {
+  uiState.reviewCompact = compact;
+  uiState.compactEditQuestionId = null;
+  renderReview(bookId, chapterId, attemptId);
+}
+
+// Multi-select MCQ correct answers don't fit a single <select>, so compact
+// mode shows them as a summary with an inline expand-to-edit instead.
+function toggleCompactEdit(bookId, chapterId, attemptId, questionId) {
+  uiState.compactEditQuestionId = uiState.compactEditQuestionId === questionId ? null : questionId;
+  renderReview(bookId, chapterId, attemptId);
+}
+
+function handleCompactSelectChange(questionId, value, bookId, chapterId, attemptId) {
+  if (!value) return;
+  applyCorrectAnswer(questionId, [value]);
+  renderReview(bookId, chapterId, attemptId);
+}
+
+function renderCompactReviewRow(bookId, chapterId, attemptId, question, idx, chosenLabel, statusClass, statusText, isLocked) {
+  let correctCell;
+  if (question.type === "mcq" && question.config.multiSelect) {
+    if (uiState.compactEditQuestionId === question.id) {
+      const checkboxes = question.config.optionLabels.map((label) => {
+        const checked = question.correctAnswer && question.correctAnswer.includes(label);
+        return html`
+          <div class="choice-row" key=${label}>
+            <input type="checkbox" name=${"correct-" + question.id} id=${"correct-" + question.id + "-" + label} value=${label} checked=${checked}
+              onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)} />
+            <label for=${"correct-" + question.id + "-" + label} style="margin:0">${label}</label>
+          </div>
+        `;
+      });
+      correctCell = html`
+        <fieldset><legend class="sr-only">Correct answer for question ${idx + 1}</legend>${checkboxes}</fieldset>
+        <button type="button" class="link-inline" onClick=${() => toggleCompactEdit(bookId, chapterId, attemptId, question.id)}>Done</button>
+      `;
+    } else {
+      const label = isLocked ? question.correctAnswer.map(formatAnswerValue).join(", ") : "Not set";
+      correctCell = html`<button type="button" class="link-inline" onClick=${() => toggleCompactEdit(bookId, chapterId, attemptId, question.id)}>${label}</button>`;
+    }
+  } else {
+    const options = question.type === "mcq" ? question.config.optionLabels : ["true", "false"];
+    correctCell = html`
+      <select aria-label=${"Correct answer for question " + (idx + 1)}
+        onChange=${(e) => handleCompactSelectChange(question.id, e.target.value, bookId, chapterId, attemptId)}>
+        <option value="" selected=${!isLocked}>Not set</option>
+        ${options.map((opt) => html`
+          <option value=${opt} selected=${isLocked && question.correctAnswer.includes(opt)} key=${opt}>${question.type === "truefalse" ? formatAnswerValue(opt) : opt}</option>
+        `)}
+      </select>
+    `;
+  }
+
+  return html`
+    <tr id=${"q-row-" + (idx + 1)} key=${question.id}>
+      <td>${idx + 1}</td>
+      <td>${chosenLabel}</td>
+      <td><span class=${statusClass}>${statusText}</span></td>
+      <td>${correctCell}</td>
+    </tr>
+  `;
 }
 
 /* ---------- Trends ---------- */
@@ -1411,6 +1487,7 @@ function jumpToWeakestQuestion(bookId, chapterId, questionNumber) {
   if (!attempts.length) return;
   const latest = attempts[attempts.length - 1];
   scrollToQuestionNum = questionNumber;
+  uiState.reviewCompact = false; // the scroll/highlight target only exists in detailed view
   navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + latest.id + "/review");
   render();
 }
