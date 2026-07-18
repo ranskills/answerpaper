@@ -13,15 +13,18 @@ function formatDateShort(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function formatDuration(startedAt, finishedAt) {
-  const ms = new Date(finishedAt) - new Date(startedAt);
-  if (!Number.isFinite(ms) || ms < 0) return "—";
-  const totalMinutes = Math.round(ms / 60000);
+function formatMinutes(totalMinutes) {
   if (totalMinutes < 1) return "< 1 min";
   if (totalMinutes < 60) return totalMinutes + " min";
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return hours + "h " + minutes + "m";
+}
+
+function formatDuration(startedAt, finishedAt) {
+  const ms = new Date(finishedAt) - new Date(startedAt);
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  return formatMinutes(Math.round(ms / 60000));
 }
 
 function formatAnswerValue(value) {
@@ -36,6 +39,20 @@ function formatChosenSummary(chosen) {
 
 function pluralize(count, noun) {
   return count + " " + noun + (count === 1 ? "" : "s");
+}
+
+// Just the plural-aware noun, no count — for a label sitting under a number
+// that's already displayed elsewhere (a stat tile), where repeating the
+// count in the label would be redundant.
+function pluralNoun(count, noun) {
+  return noun + (count === 1 ? "" : "s");
+}
+
+function renderTrendBadge(trend) {
+  if (trend === "improving") return html`<span class="status-correct">↑ Improving</span>`;
+  if (trend === "declining") return html`<span class="status-incorrect">↓ Declining</span>`;
+  if (trend === "steady") return html`<span class="status-ungraded">→ Steady</span>`;
+  return null;
 }
 
 function formatScoreLabel(score, compact) {
@@ -157,9 +174,64 @@ function renderHome() {
     ? html`<p class="onboarding-hint">New here? The workflow is: create a <strong>book</strong> → add a <strong>chapter</strong> to it → take an <strong>attempt</strong> on the chapter → grade your answers → retake and track trends over time.</p>`
     : null;
 
+  const continueChapter = Store.attempts.length ? computeContinueChapter(Store) : null;
+  const continueTrend = continueChapter ? renderTrendBadge(computeChapterScoreTrend(Store, continueChapter.chapter.id)) : null;
+  const continueCard = continueChapter ? html`
+    <div class="card">
+      <h2>Continue studying</h2>
+      <p class="card-meta" style="margin: 0"><a href=${"#/books/" + continueChapter.book.id + "/chapters"}>${continueChapter.book.title}</a></p>
+      <p style="margin: 0 0 var(--space-2) 0"><a class="card-link" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id}>${continueChapter.chapter.title}</a></p>
+      <p class="card-meta" style="margin: 0">Last attempt: ${formatScoreLabel(computeAttemptScore(Store, continueChapter.attempt), true)} · ${formatDate(continueChapter.attempt.finishedAt)}${continueTrend ? html` · ${continueTrend}` : null}</p>
+      <div class="btn-row">
+        <a class="btn primary" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id + "/attempt"}>Retake</a>
+        <a class="btn" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id + "/trends"}>View trends</a>
+      </div>
+    </div>
+  ` : null;
+
+  const stats = Store.books.length ? computeOverallStats(Store) : null;
+  const statTiles = stats ? html`
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="stat-value">${stats.bookCount} <span class="stat-value-secondary">/ ${stats.chapterCount}</span></div>
+        <div class="stat-label">Books / Chapters</div>
+      </div>
+      <div class="stat-tile"><div class="stat-value">${stats.attemptCount}</div><div class="stat-label">${pluralNoun(stats.attemptCount, "Attempt")}</div></div>
+      <div class="stat-tile"><div class="stat-value">${stats.streakDays}</div><div class="stat-label">Day streak</div></div>
+      <div class="stat-tile"><div class="stat-value">${formatMinutes(stats.totalStudyMinutes)}</div><div class="stat-label">Time studied</div></div>
+    </div>
+  ` : null;
+
+  const needsAttentionItemText = {
+    "not-started": () => "Not started yet",
+    "ungraded": (item) => pluralize(item.ungradedCount, "question") + " not yet graded",
+    "flagged": (item) => pluralize(item.flaggedWrongCount, "flagged answer") + " to review",
+  };
+  const needsAttention = computeNeedsAttention(Store, 5);
+  const needsAttentionCard = needsAttention.length ? html`
+    <div class="card">
+      <h2>Needs attention</h2>
+      <ul class="plain-list">
+        ${needsAttention.map((item) => {
+          const href = item.type === "not-started"
+            ? "#/books/" + item.book.id + "/chapters/" + item.chapter.id
+            : "#/books/" + item.book.id + "/chapters/" + item.chapter.id + "/attempt/" + item.attemptId + "/review";
+          return html`
+            <li key=${item.chapter.id}>
+              <a href=${href}>${item.book.title} › ${item.chapter.title}</a> <span class="status-ungraded">· ${needsAttentionItemText[item.type](item)}</span>
+            </li>
+          `;
+        })}
+      </ul>
+    </div>
+  ` : null;
+
   mount(html`
     <h1>Home</h1>
     ${onboarding}
+    ${continueCard}
+    ${statTiles}
+    ${needsAttentionCard}
     <div class="card">
       <h2>Recent activity</h2>
       ${attempts.length
@@ -387,14 +459,7 @@ function renderChapterList(bookId) {
         " · avg " + Math.round(scores.reduce((sum, p) => sum + p, 0) / scores.length) + "%" +
         " · best " + Math.max(...scores) + "%"
       : pluralize(attemptCount, "attempt");
-    let trendLine = null;
-    if (scores.length >= 2) {
-      const recent = scores[scores.length - 1];
-      const priorAvg = scores.slice(0, -1).reduce((sum, p) => sum + p, 0) / (scores.length - 1);
-      if (recent > priorAvg) trendLine = html`<span class="status-correct">↑ Improving</span>`;
-      else if (recent < priorAvg) trendLine = html`<span class="status-incorrect">↓ Declining</span>`;
-      else trendLine = html`<span class="status-ungraded">→ Steady</span>`;
-    }
+    const trendLine = renderTrendBadge(computeChapterScoreTrend(Store, chapter.id));
     const lastAttemptDate = chapterAttempts.length
       ? chapterAttempts.reduce((latest, a) => (new Date(a.finishedAt) > new Date(latest) ? a.finishedAt : latest), chapterAttempts[0].finishedAt)
       : null;

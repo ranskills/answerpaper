@@ -98,6 +98,21 @@ function computeChapterTrend(store, chapterId) {
   return series;
 }
 
+// "improving" | "declining" | "steady" | null (null = fewer than two graded
+// attempts, not enough to compare yet). Compares the most recent graded
+// score against the average of every prior graded score for the chapter.
+function computeChapterScoreTrend(store, chapterId) {
+  const scores = computeChapterTrend(store, chapterId)
+    .map((s) => s.scorePercent)
+    .filter((p) => p !== null);
+  if (scores.length < 2) return null;
+  const recent = scores[scores.length - 1];
+  const priorAvg = scores.slice(0, -1).reduce((sum, p) => sum + p, 0) / (scores.length - 1);
+  if (recent > priorAvg) return "improving";
+  if (recent < priorAvg) return "declining";
+  return "steady";
+}
+
 function chapterLastActivity(store, chapterId) {
   const chapter = store.chapters.find((c) => c.id === chapterId);
   if (!chapter) return null;
@@ -134,4 +149,123 @@ function weakestQuestions(store, chapterId, n) {
     .filter((s) => s.gradedCount > 0 && s.incorrectRate > 0)
     .sort((a, b) => b.incorrectRate - a.incorrectRate)
     .slice(0, n);
+}
+
+function localDateKey(iso) {
+  const d = new Date(iso);
+  return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+}
+
+// Consecutive calendar days (local time) with at least one finished attempt,
+// counting back from today. Today doesn't have to have an attempt yet for the
+// streak to still be "alive" — it only breaks once a full day is skipped.
+function computeStudyStreak(store, now) {
+  now = now || new Date();
+  const activeDates = new Set(store.attempts.map((a) => localDateKey(a.finishedAt)));
+  if (activeDates.size === 0) return 0;
+
+  const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!activeDates.has(localDateKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+    if (!activeDates.has(localDateKey(cursor))) return 0;
+  }
+
+  let streak = 0;
+  while (activeDates.has(localDateKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+// Home dashboard stat tiles. Archived books are excluded from the book/chapter
+// counts (they're retired), but their attempts still count toward lifetime
+// totals like attempt count and time studied. Deliberately just sums — no
+// cross-chapter score average, since averaging scores across unrelated
+// subjects doesn't mean anything a user could act on.
+function computeOverallStats(store, now) {
+  const activeBookIds = new Set(store.books.filter((b) => !b.archived).map((b) => b.id));
+  const activeChapterCount = store.chapters.filter((c) => activeBookIds.has(c.bookId)).length;
+
+  let totalMs = 0;
+  store.attempts.forEach((attempt) => {
+    const ms = new Date(attempt.finishedAt) - new Date(attempt.startedAt);
+    if (Number.isFinite(ms) && ms > 0) totalMs += ms;
+  });
+
+  return {
+    bookCount: activeBookIds.size,
+    chapterCount: activeChapterCount,
+    attemptCount: store.attempts.length,
+    totalStudyMinutes: Math.round(totalMs / 60000),
+    streakDays: computeStudyStreak(store, now),
+  };
+}
+
+// The chapter to offer as "continue studying" on Home: the one behind the
+// single most recent attempt on an active (non-archived) book. Chapters that
+// have never been attempted don't qualify — there's nothing to continue, and
+// that case is already covered by "Needs attention" (not-started).
+function computeContinueChapter(store) {
+  const activeBookIds = new Set(store.books.filter((b) => !b.archived).map((b) => b.id));
+  const attempts = store.attempts.slice().sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
+
+  for (const attempt of attempts) {
+    const chapter = store.chapters.find((c) => c.id === attempt.chapterId);
+    if (!chapter || !activeBookIds.has(chapter.bookId)) continue;
+    const book = store.books.find((b) => b.id === chapter.bookId);
+    return { book, chapter, attempt };
+  }
+  return null;
+}
+
+// Chapters worth surfacing on Home: ones created but never attempted, ones
+// with an ungraded latest attempt, or ones whose latest attempt has a
+// question the user flagged "not sure" about and got wrong (the flag was
+// warranted). Archived books are excluded — they're retired, not neglected.
+// Each chapter surfaces at most one reason, in that priority order, so it
+// doesn't show up twice for two different reasons at once.
+function computeNeedsAttention(store, limit) {
+  const activeBookIds = new Set(store.books.filter((b) => !b.archived).map((b) => b.id));
+  const items = [];
+
+  store.chapters.forEach((chapter) => {
+    if (!activeBookIds.has(chapter.bookId)) return;
+    const book = store.books.find((b) => b.id === chapter.bookId);
+
+    if (chapter.questionOrder.length === 0) {
+      items.push({ type: "not-started", book, chapter, sortDate: chapter.createdAt });
+      return;
+    }
+
+    const attempts = attemptsForChapter(store, chapter.id);
+    if (!attempts.length) return;
+    const latest = attempts[attempts.length - 1];
+    const score = computeAttemptScore(store, latest);
+
+    if (score.trulyUngradedCount > 0) {
+      items.push({
+        type: "ungraded",
+        book, chapter,
+        attemptId: latest.id,
+        ungradedCount: score.trulyUngradedCount,
+        sortDate: latest.finishedAt,
+      });
+      return;
+    }
+
+    const flaggedWrongCount = latest.responses.filter((r) => r.flagged && r.correct === false).length;
+    if (flaggedWrongCount > 0) {
+      items.push({
+        type: "flagged",
+        book, chapter,
+        attemptId: latest.id,
+        flaggedWrongCount,
+        sortDate: latest.finishedAt,
+      });
+    }
+  });
+
+  items.sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
+  return typeof limit === "number" ? items.slice(0, limit) : items;
 }
