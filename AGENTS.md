@@ -56,7 +56,7 @@ The one exception is the New Attempt / Retake wizard: it holds transient in-memo
 Hash-based, parsed in `render()` in `render.js`:
 - `#/` — Home/dashboard (recent activity)
 - `#/books` — Book list
-- `#/data` — Data management (counts, storage size, Export/Import, Clear all data)
+- `#/data` — Data management (storage size, archived book count, Export/Import, Clear all data)
 - `#/books/:bookId/chapters` — Chapter list
 - `#/books/:bookId/chapters/:chapterId` — Chapter detail
 - `#/books/:bookId/chapters/:chapterId/attempt` — New Attempt/Retake wizard (mode is inferred from whether `chapter.questionOrder` is empty, not from a URL param)

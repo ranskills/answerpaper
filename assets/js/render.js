@@ -990,13 +990,23 @@ function keyboardHint(type) {
   return html`<p class="wizard-unsure-hint">${t("wizard.keyboardHint", { keys: answerKeys })}</p>`;
 }
 
+function progressBar(current, total) {
+  const pct = Math.round((current / total) * 100);
+  return html`
+    <div class="progress-bar" role="progressbar" aria-valuenow=${current} aria-valuemin="0" aria-valuemax=${total} aria-label=${t("wizard.progressLabel", { current, total })}>
+      <div class="progress-bar-fill" style=${`width:${pct}%`}></div>
+    </div>
+  `;
+}
+
 function renderNewWizard(bookId, chapterId, chapter) {
   if (Wizard.stage === "count") {
     return mount(html`
       <h1>${t("wizard.newAttemptTitle", { title: chapter.title })}</h1>
       <div class="card">
         <label for="q-count">${t("wizard.howManyQuestions")}</label>
-        <input id="q-count" type="number" min="1" max="200" value="20" autofocus />
+        <input id="q-count" type="number" min="1" max="200" placeholder=${t("wizard.howManyQuestionsPlaceholder")} autofocus />
+        ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
         <div class="btn-row">
           <button type="button" class="primary" onClick=${startNewWizardQuestions}>${t("wizard.begin")}</button>
           <button type="button" onClick=${cancelWizard}>${t("common.cancel")}</button>
@@ -1039,6 +1049,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
   mount(html`
     <h1>${chapter.title}</h1>
     <p class="wizard-progress" tabindex="-1" autofocus>${unbounded ? t("wizard.questionUnbounded", { i: i + 1 }) : t("wizard.questionOf", { i: i + 1, total: Wizard.total })}${flaggedSoFar > 0 ? t("wizard.flaggedSoFar", { count: flaggedSoFar }) : ""}</p>
+    ${unbounded ? null : progressBar(i + 1, Wizard.total)}
     <div class="card">
       <label for="q-type">${t("chapterDetail.questionType")}</label>
       <select id="q-type" onChange=${(e) => wizardUpdateType(e.target.value)}>
@@ -1075,7 +1086,12 @@ function wizardGoBack() {
 
 function startNewWizardQuestions() {
   const count = parseInt(document.getElementById("q-count").value, 10);
-  if (!count || count < 1) return;
+  if (!count || count < 1) {
+    Wizard.error = t("wizard.errorEnterQuestionCount");
+    render();
+    return;
+  }
+  Wizard.error = null;
   Wizard.total = count;
   Wizard.stage = "questions";
   Wizard.currentType = "mcq";
@@ -1261,6 +1277,7 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
   mount(html`
     <h1>${t("wizard.retakeTitle", { title: chapter.title })}</h1>
     <p class="wizard-progress" tabindex="-1" autofocus>${t("wizard.questionOf", { i: i + 1, total: chapter.questionOrder.length })}${flaggedSoFar > 0 ? t("wizard.flaggedSoFar", { count: flaggedSoFar }) : ""}</p>
+    ${progressBar(i + 1, chapter.questionOrder.length)}
     <div class="card">
       ${renderAnswerFieldset(question.type, question.config, priorEntry.chosen)}
       ${flagCheckbox(priorEntry.flagged, t("wizard.flagUnsure"))}
