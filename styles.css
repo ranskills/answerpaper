@@ -24,7 +24,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* Only auto-follow the system when the user hasn't picked a theme explicitly. */
+  :root:not([data-theme]) {
     color-scheme: dark;
     --bg: #16181c;
     --surface: #1f2226;
@@ -41,6 +42,24 @@
     --shadow: none;
     --focus-ring: 0 0 0 3px rgba(64, 139, 230, 0.55);
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16181c;
+  --surface: #1f2226;
+  --surface-2: #24272c;
+  --text: #eceef0;
+  --text-secondary: #a4aab3;
+  --border: #34383e;
+  --accent: #408be6;
+  --accent-contrast: #0b0e12;
+  --success: #4caf50;
+  --error: #e57373;
+  --neutral: #858b94;
+  --series-1: #408be6;
+  --shadow: none;
+  --focus-ring: 0 0 0 3px rgba(64, 139, 230, 0.55);
 }
 
 * {

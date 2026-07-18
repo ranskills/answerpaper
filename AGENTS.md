@@ -65,6 +65,7 @@ Hash-based, parsed in `render()` in `render.js`:
 ## Design conventions to preserve
 
 - All colors go through the CSS custom properties defined in `:root` / `prefers-color-scheme: dark` in `styles.css` (`--bg`, `--surface`, `--text`, `--accent`, `--series-1`, status colors, etc.) — never hard-code a hex value in new UI.
+- Theme is "Auto" (follows `prefers-color-scheme`) by default; the header's "Theme" button (`cycleTheme`/`setTheme` in `app.js`) cycles Auto → Light → Dark and persists the choice to `localStorage` (`answerpaper.theme`) as a `data-theme` attribute on `<html>`. A blocking inline script in `index.html`'s `<head>` applies any stored override before first paint to avoid a flash of the wrong theme — the dark token block in `styles.css` is duplicated under `:root[data-theme="dark"]`, and the `prefers-color-scheme` media query is scoped to `:root:not([data-theme])` so it only applies in Auto mode.
 - Status (correct/incorrect/ungraded) is never color-only — always pair the color with text or a glyph (see the Trends per-question ✓/✗ tables and Review screen).
 - Deletions (book, chapter) always cascade and always go through a `confirm()` dialog stating what will be removed, built from `bookCascadeCounts`/`chapterCascadeCounts` in `app.js`.
 - Keep accessibility basics intact when touching markup: real `<button>`/`<a>`/`<label>` elements (not `<div onclick>`), visible `:focus-visible` outlines, the skip-to-content link in `index.html`.

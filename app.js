@@ -3,6 +3,40 @@
 const APP_VERSION = "v0.1.0";
 
 const STORAGE_KEY = "answerpaper.store.v1";
+const THEME_KEY = "answerpaper.theme";
+
+/* ---------- Theme ---------- */
+
+// null/absent means "follow the system" (prefers-color-scheme); index.html
+// applies any stored override synchronously, before first paint, to avoid a
+// flash of the wrong theme.
+function getStoredTheme() {
+  const t = localStorage.getItem(THEME_KEY);
+  return t === "light" || t === "dark" ? t : null;
+}
+
+function setTheme(theme) {
+  if (theme) {
+    localStorage.setItem(THEME_KEY, theme);
+    document.documentElement.setAttribute("data-theme", theme);
+  } else {
+    localStorage.removeItem(THEME_KEY);
+    document.documentElement.removeAttribute("data-theme");
+  }
+  updateThemeToggleButton();
+}
+
+function cycleTheme() {
+  const current = getStoredTheme();
+  setTheme(current === null ? "light" : current === "light" ? "dark" : null);
+}
+
+function updateThemeToggleButton() {
+  const btn = document.getElementById("theme-toggle");
+  const current = getStoredTheme();
+  const label = current === "light" ? "Light" : current === "dark" ? "Dark" : "Auto";
+  btn.textContent = "Theme: " + label;
+}
 
 function emptyStore() {
   return { version: 1, books: [], chapters: [], questions: [], attempts: [] };
@@ -295,6 +329,8 @@ window.addEventListener("beforeunload", (e) => {
 window.addEventListener("hashchange", () => render());
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("version-tag").textContent = APP_VERSION;
+  updateThemeToggleButton();
+  document.getElementById("theme-toggle").addEventListener("click", cycleTheme);
   document.getElementById("export-btn").addEventListener("click", exportData);
   document.getElementById("import-input").addEventListener("change", (e) => {
     const file = e.target.files[0];
