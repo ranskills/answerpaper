@@ -428,6 +428,7 @@ fieldset {
 /* ---------- Tables ---------- */
 
 .table-wrap {
+  position: relative;
   overflow-x: auto;
   background:
     linear-gradient(to right, var(--surface) 30%, rgba(255, 255, 255, 0)),
