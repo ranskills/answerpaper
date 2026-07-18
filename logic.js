@@ -136,12 +136,6 @@ function weakestQuestions(store, chapterId, n) {
     .slice(0, n);
 }
 
-// Home dashboard stat tiles. Archived books are excluded from the book/chapter
-// counts (they're retired), but their attempts still count toward lifetime
-// totals like attempt count, average score, and time studied.
-// Deliberately just sums (book/attempt counts, time studied) — no
-// cross-chapter score average, since averaging scores across unrelated
-// subjects doesn't mean anything a user could act on.
 function localDateKey(iso) {
   const d = new Date(iso);
   return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
@@ -169,6 +163,11 @@ function computeStudyStreak(store, now) {
   return streak;
 }
 
+// Home dashboard stat tiles. Archived books are excluded from the book/chapter
+// counts (they're retired), but their attempts still count toward lifetime
+// totals like attempt count and time studied. Deliberately just sums — no
+// cross-chapter score average, since averaging scores across unrelated
+// subjects doesn't mean anything a user could act on.
 function computeOverallStats(store, now) {
   const activeBookIds = new Set(store.books.filter((b) => !b.archived).map((b) => b.id));
   const activeChapterCount = store.chapters.filter((c) => activeBookIds.has(c.bookId)).length;
@@ -186,6 +185,23 @@ function computeOverallStats(store, now) {
     totalStudyMinutes: Math.round(totalMs / 60000),
     streakDays: computeStudyStreak(store, now),
   };
+}
+
+// The chapter to offer as "continue studying" on Home: the one behind the
+// single most recent attempt on an active (non-archived) book. Chapters that
+// have never been attempted don't qualify — there's nothing to continue, and
+// that case is already covered by "Needs attention" (not-started).
+function computeContinueChapter(store) {
+  const activeBookIds = new Set(store.books.filter((b) => !b.archived).map((b) => b.id));
+  const attempts = store.attempts.slice().sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
+
+  for (const attempt of attempts) {
+    const chapter = store.chapters.find((c) => c.id === attempt.chapterId);
+    if (!chapter || !activeBookIds.has(chapter.bookId)) continue;
+    const book = store.books.find((b) => b.id === chapter.bookId);
+    return { book, chapter, attempt };
+  }
+  return null;
 }
 
 // Chapters worth surfacing on Home: ones created but never attempted, ones

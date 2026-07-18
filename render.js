@@ -167,6 +167,20 @@ function renderHome() {
     ? html`<p class="onboarding-hint">New here? The workflow is: create a <strong>book</strong> → add a <strong>chapter</strong> to it → take an <strong>attempt</strong> on the chapter → grade your answers → retake and track trends over time.</p>`
     : null;
 
+  const continueChapter = Store.attempts.length ? computeContinueChapter(Store) : null;
+  const continueCard = continueChapter ? html`
+    <div class="card">
+      <h2>Continue studying</h2>
+      <p class="card-meta" style="margin: 0"><a href=${"#/books/" + continueChapter.book.id + "/chapters"}>${continueChapter.book.title}</a></p>
+      <p style="margin: 0 0 var(--space-2) 0"><a class="card-link" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id}>${continueChapter.chapter.title}</a></p>
+      <p class="card-meta" style="margin: 0">Last attempt: ${formatScoreLabel(computeAttemptScore(Store, continueChapter.attempt), true)} · ${formatDate(continueChapter.attempt.finishedAt)}</p>
+      <div class="btn-row">
+        <a class="btn primary" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id + "/attempt"}>Retake</a>
+        <a class="btn" href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id + "/trends"}>View trends</a>
+      </div>
+    </div>
+  ` : null;
+
   const stats = Store.books.length ? computeOverallStats(Store) : null;
   const statTiles = stats ? html`
     <div class="stat-row">
@@ -207,6 +221,7 @@ function renderHome() {
   mount(html`
     <h1>Home</h1>
     ${onboarding}
+    ${continueCard}
     ${statTiles}
     ${needsAttentionCard}
     <div class="card">
