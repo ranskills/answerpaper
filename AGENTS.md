@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents (Claude Code, and other AGENTS.m
 
 ## What this is
 
-A single self-contained static web app (no backend, no login, no build step) for practicing exam-style questions from a book's chapters, grading yourself, retaking chapters, and tracking trends. It's meant to be hosted as-is on GitHub Pages.
+See `README.md` for what the app does and how it works. In short: a single self-contained static web app, no backend/login/build step, meant to be hosted as-is on GitHub Pages.
 
 The one dependency is Preact + htm, vendored directly into `assets/js/vendor/` as classic UMD builds (no CDN, no npm, no build step — see `assets/js/vendor/README.md` for provenance). Every script, including `render.js`, is a plain classic `<script>` (not `type="module"`) — ES module scripts are fetched in CORS mode, which browsers refuse for `file://` origins, and this app is meant to be opened directly from disk with no server. `assets/js/vendor/preact.min.js`/`assets/js/vendor/htm.js` attach `self.preact`/`self.htm` globals; `render.js` reads those directly (`const html = self.htm.bind(self.preact.h);`).
 
@@ -56,7 +56,7 @@ The one exception is the New Attempt / Retake wizard: it holds transient in-memo
 Hash-based, parsed in `render()` in `render.js`:
 - `#/` — Home/dashboard (recent activity)
 - `#/books` — Book list
-- `#/data` — Data management (storage size, archived book count, Export/Import, Clear all data)
+- `#/data` — Data management (see "Data & backups" in `README.md` for what it shows)
 - `#/books/:bookId/chapters` — Chapter list
 - `#/books/:bookId/chapters/:chapterId` — Chapter detail
 - `#/books/:bookId/chapters/:chapterId/attempt` — New Attempt/Retake wizard (mode is inferred from whether `chapter.questionOrder` is empty, not from a URL param)
