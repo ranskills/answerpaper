@@ -24,9 +24,9 @@ To host it on GitHub Pages: push this repo to GitHub and enable Pages for the de
 
 ## Data & backups
 
-All data lives in the browser's `localStorage` — there is no server and no account. Use the **Export** button in the header to download a full JSON snapshot of your books/chapters/questions/attempts, and **Import** to load one back in (this replaces whatever is currently stored, after a confirmation prompt). This is the only way to move your data between browsers or machines.
+All data lives in the browser's `localStorage` — there is no server and no account. The **Data** page (in the header nav) is where you manage it: counts of everything you've created, how much storage it's using, and **Export**/**Import** buttons for downloading a full JSON snapshot of your books/chapters/questions/attempts or loading one back in (import replaces whatever is currently stored, after a confirmation prompt). This is the only way to move your data between browsers or machines.
 
-A **Clear all data** link at the bottom of the Books list wipes everything in one step (all books, chapters, questions, and attempts), after a confirmation showing exactly what will be removed. Useful on a shared machine, or to start over without deleting books one at a time.
+The same page has a **Clear all data** action in its "Danger zone", which wipes everything in one step (all books, chapters, questions, and attempts) after a confirmation showing exactly what will be removed. Useful on a shared machine, or to start over without deleting books one at a time.
 
 ## Design
 

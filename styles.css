@@ -252,25 +252,6 @@ button.danger {
   background: transparent;
 }
 
-button.link-danger {
-  min-height: auto;
-  padding: var(--space-1) 0;
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  text-decoration: underline;
-  font-size: 0.9rem;
-}
-
-button.link-danger:hover {
-  color: var(--error);
-  background: none;
-}
-
-.wipe-data-row {
-  margin-top: var(--space-5);
-}
-
 button.link-inline {
   display: inline;
   min-height: auto;
@@ -380,6 +361,10 @@ button.link-inline:hover {
 
 .card.highlight-card {
   box-shadow: 0 0 0 3px var(--accent);
+}
+
+.card.card-danger {
+  border-color: var(--error);
 }
 
 .card h2,

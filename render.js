@@ -21,6 +21,13 @@ function formatMinutes(totalMinutes) {
   return hours + "h " + minutes + "m";
 }
 
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  const kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(kb < 10 ? 1 : 0) + " KB";
+  return (kb / 1024).toFixed(2) + " MB";
+}
+
 function formatDuration(startedAt, finishedAt) {
   const ms = new Date(finishedAt) - new Date(startedAt);
   if (!Number.isFinite(ms) || ms < 0) return "—";
@@ -109,8 +116,10 @@ function updateNavActiveState() {
   const parts = currentRoute();
   const homeLink = document.querySelector('nav a[href="#/"]');
   const booksLink = document.querySelector('nav a[href="#/books"]');
+  const dataLink = document.querySelector('nav a[href="#/data"]');
   const isHome = parts.length === 0;
   const isBooks = parts[0] === "books";
+  const isData = parts[0] === "data";
   if (homeLink) {
     if (isHome) homeLink.setAttribute("aria-current", "page");
     else homeLink.removeAttribute("aria-current");
@@ -119,12 +128,17 @@ function updateNavActiveState() {
     if (isBooks) booksLink.setAttribute("aria-current", "page");
     else booksLink.removeAttribute("aria-current");
   }
+  if (dataLink) {
+    if (isData) dataLink.setAttribute("aria-current", "page");
+    else dataLink.removeAttribute("aria-current");
+  }
 }
 
 function render() {
   updateNavActiveState();
   const parts = currentRoute();
   if (parts.length === 0) return renderHome();
+  if (parts[0] === "data" && parts.length === 1) return renderData();
   if (parts[0] === "books" && parts.length === 1) return renderBookList();
   if (parts[0] === "books" && parts[1] && parts[2] === "chapters" && parts.length === 3) {
     return renderChapterList(parts[1]);
@@ -321,10 +335,6 @@ function renderBookList() {
     `
     : html`<div class="btn-row"><button type="button" id="add-book-toggle" class="primary" onClick=${() => toggleAddBookForm(true)}>+ Add book</button></div>`;
 
-  const wipeLink = Store.books.length
-    ? html`<p class="wipe-data-row"><button type="button" class="link-danger" onClick=${promptResetAllData}>Clear all data</button></p>`
-    : null;
-
   const sortHint = booksForFilter.length > 1
     ? html`<p class="list-sort-hint">Sorted by recent activity — most recently added or attempted first.</p>`
     : null;
@@ -350,7 +360,6 @@ function renderBookList() {
     ${sortHint}
     ${addForm}
     ${booksSection}
-    ${wipeLink}
   `);
 }
 
@@ -383,8 +392,89 @@ function promptResetAllData() {
   );
   if (ok) {
     resetStore();
-    renderBookList();
+    renderData();
   }
+}
+
+/* ---------- Data ---------- */
+
+function renderData() {
+  document.title = "Data — AnswerPaper";
+  const archivedCount = Store.books.filter((b) => b.archived).length;
+  const earliestBookDate = Store.books.reduce(
+    (earliest, b) => (!earliest || b.createdAt < earliest ? b.createdAt : earliest),
+    null
+  );
+  const lastExportAt = getLastExportAt();
+
+  const emptyState = Store.books.length === 0
+    ? html`
+      <div class="card">
+        <p>There's no data to manage yet.</p>
+        <div class="btn-row"><button type="button" onClick=${handleLoadSampleData}>Load sample data</button></div>
+      </div>
+    `
+    : null;
+
+  const dangerCard = Store.books.length
+    ? html`
+      <div class="card card-danger">
+        <h2>Danger zone</h2>
+        <p class="card-meta" style="margin: 0">Permanently erase all books, chapters, questions, and attempts from this browser. This cannot be undone.</p>
+        <div class="btn-row"><button type="button" class="danger" onClick=${promptResetAllData}>Clear all data</button></div>
+      </div>
+    `
+    : null;
+
+  mount(html`
+    <h1>Data</h1>
+    ${emptyState}
+    <div class="card">
+      <h2>Storage</h2>
+      <p class="card-meta" style="margin: 0">${formatBytes(dataStorageBytes())} stored in this browser${archivedCount ? html` · ${pluralize(archivedCount, "archived book")}` : null}</p>
+      ${earliestBookDate ? html`<p class="card-meta" style="margin: 0">Tracking since ${formatDateShort(earliestBookDate)}</p>` : null}
+    </div>
+    <div class="card">
+      <h2>Backup</h2>
+      <p class="card-meta" style="margin: 0">${lastExportAt ? html`Last exported ${formatDate(lastExportAt)}` : "Never exported yet"}</p>
+      <div class="btn-row">
+        <button type="button" class="primary" onClick=${handleExportData}>Export data</button>
+        <label class="import-label" for="import-input">Import data
+          <input id="import-input" type="file" accept="application/json" onChange=${handleImportFile} />
+        </label>
+      </div>
+    </div>
+    ${dangerCard}
+  `);
+}
+
+function handleExportData() {
+  exportData();
+  renderData();
+}
+
+function handleImportFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const summary = { books: Store.books.length, chapters: Store.chapters.length, attempts: Store.attempts.length };
+  const ok = confirm(
+    "Importing will replace your current data (" +
+      pluralize(summary.books, "book") + ", " + pluralize(summary.chapters, "chapter") +
+      ", " + pluralize(summary.attempts, "attempt") + "). Continue?"
+  );
+  if (!ok) {
+    e.target.value = "";
+    return;
+  }
+  importData(file, (err) => {
+    e.target.value = "";
+    if (err) {
+      alert("Import failed: " + err.message);
+      return;
+    }
+    navigate("/");
+    render();
+  });
 }
 
 function toggleAddBookForm(open) {

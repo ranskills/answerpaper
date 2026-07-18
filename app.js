@@ -4,6 +4,7 @@ const APP_VERSION = "v0.1.0";
 
 const STORAGE_KEY = "answerpaper.store.v1";
 const THEME_KEY = "answerpaper.theme";
+const LAST_EXPORT_KEY = "answerpaper.lastExport";
 
 /* ---------- Theme ---------- */
 
@@ -72,6 +73,10 @@ function allDataCounts() {
     chapterCount: Store.chapters.length,
     attemptCount: Store.attempts.length,
   };
+}
+
+function dataStorageBytes() {
+  return new Blob([JSON.stringify(Store)]).size;
 }
 
 function resetStore() {
@@ -276,7 +281,12 @@ function exportData() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  localStorage.setItem(LAST_EXPORT_KEY, new Date().toISOString());
   showToast("Exported " + filename);
+}
+
+function getLastExportAt() {
+  return localStorage.getItem(LAST_EXPORT_KEY);
 }
 
 function showToast(message) {
@@ -331,29 +341,5 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("version-tag").textContent = APP_VERSION;
   updateThemeToggleButton();
   document.getElementById("theme-toggle").addEventListener("click", cycleTheme);
-  document.getElementById("export-btn").addEventListener("click", exportData);
-  document.getElementById("import-input").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const summary = { books: Store.books.length, chapters: Store.chapters.length, attempts: Store.attempts.length };
-    const ok = confirm(
-      "Importing will replace your current data (" +
-        pluralize(summary.books, "book") + ", " + pluralize(summary.chapters, "chapter") +
-        ", " + pluralize(summary.attempts, "attempt") + "). Continue?"
-    );
-    if (!ok) {
-      e.target.value = "";
-      return;
-    }
-    importData(file, (err) => {
-      e.target.value = "";
-      if (err) {
-        alert("Import failed: " + err.message);
-        return;
-      }
-      navigate("/");
-      render();
-    });
-  });
   render();
 });
