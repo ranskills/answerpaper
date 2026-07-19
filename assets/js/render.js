@@ -372,13 +372,13 @@ function handleLoadSampleData() {
   renderHome();
 }
 
-function promptResetAllData() {
+async function promptResetAllData() {
   const counts = allDataCounts();
-  const ok = confirm(t("books.confirmDeleteAll", {
+  const ok = await showConfirm(t("books.confirmDeleteAll", {
     books: tn("common.book", counts.bookCount),
     chapters: tn("common.chapter", counts.chapterCount),
     attempts: tn("common.attempt", counts.attemptCount),
-  }));
+  }), { confirmLabel: t("data.clearAllData"), danger: true });
   if (ok) {
     resetStore();
     renderData();
@@ -442,23 +442,23 @@ function handleExportData() {
   renderData();
 }
 
-function handleImportFile(e) {
+async function handleImportFile(e) {
   const file = e.target.files[0];
   if (!file) return;
   const summary = { books: Store.books.length, chapters: Store.chapters.length, attempts: Store.attempts.length };
-  const ok = confirm(t("data.confirmImport", {
+  const ok = await showConfirm(t("data.confirmImport", {
     books: tn("common.book", summary.books),
     chapters: tn("common.chapter", summary.chapters),
     attempts: tn("common.attempt", summary.attempts),
-  }));
+  }), { confirmLabel: t("data.importData") });
   if (!ok) {
     e.target.value = "";
     return;
   }
-  importData(file, (err) => {
+  importData(file, async (err) => {
     e.target.value = "";
     if (err) {
-      alert(t("data.importFailed", { message: err.message }));
+      await showAlert(t("data.importFailed", { message: err.message }));
       return;
     }
     navigate("/");
@@ -503,14 +503,14 @@ function handleRenameBook(event, bookId) {
   return false;
 }
 
-function promptDeleteBook(bookId) {
+async function promptDeleteBook(bookId) {
   const book = Store.books.find((b) => b.id === bookId);
   const counts = bookCascadeCounts(bookId);
-  const ok = confirm(t("books.confirmDeleteBook", {
+  const ok = await showConfirm(t("books.confirmDeleteBook", {
     title: book.title,
     chapters: tn("common.chapter", counts.chapterCount),
     attempts: tn("common.attempt", counts.attemptCount),
-  }));
+  }), { confirmLabel: t("common.delete"), danger: true });
   if (ok) {
     deleteBook(bookId);
     renderBookList();
@@ -637,10 +637,10 @@ function handleRenameChapter(event, bookId, chapterId) {
   return false;
 }
 
-function promptDeleteChapter(bookId, chapterId) {
+async function promptDeleteChapter(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const counts = chapterCascadeCounts(chapterId);
-  const ok = confirm(t("chapters.confirmDeleteChapter", { title: chapter.title, attempts: tn("common.attempt", counts.attemptCount) }));
+  const ok = await showConfirm(t("chapters.confirmDeleteChapter", { title: chapter.title, attempts: tn("common.attempt", counts.attemptCount) }), { confirmLabel: t("common.delete"), danger: true });
   if (ok) {
     deleteChapter(chapterId);
     renderChapterList(bookId);
@@ -830,11 +830,11 @@ function moveQuestion(bookId, chapterId, questionId, direction) {
   focusById((direction < 0 ? "q-up-" : "q-down-") + questionId);
 }
 
-function promptDeleteQuestion(bookId, chapterId, questionId) {
+async function promptDeleteQuestion(bookId, chapterId, questionId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   const idx = chapter.questionOrder.indexOf(questionId);
   const counts = questionCascadeCounts(chapterId, questionId);
-  const ok = confirm(t("chapterDetail.confirmDeleteQuestion", { n: idx + 1, attempts: tn("common.pastAttempt", counts.attemptCount) }));
+  const ok = await showConfirm(t("chapterDetail.confirmDeleteQuestion", { n: idx + 1, attempts: tn("common.pastAttempt", counts.attemptCount) }), { confirmLabel: t("common.delete"), danger: true });
   if (ok) {
     deleteQuestion(chapterId, questionId);
     renderChapterDetail(bookId, chapterId);
@@ -905,9 +905,9 @@ function wizardHasProgress() {
   return Wizard.index > 0 || Object.keys(Wizard.responses).length > 0 || Wizard.stage !== "questions";
 }
 
-function cancelWizard() {
-  if (wizardHasProgress() && !confirm(t("wizard.confirmCancelAttempt"))) return;
+async function cancelWizard() {
   const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
+  if (wizardHasProgress() && !(await showConfirm(t("wizard.confirmCancelAttempt"), { confirmLabel: t("wizard.discardAttempt"), cancelLabel: t("wizard.keepEditing"), danger: true }))) return;
   Wizard = null;
   navigate("/books/" + bookId + "/chapters/" + chapterId);
   render();
@@ -1211,10 +1211,10 @@ function renderNewFlaggedReview(bookId, chapterId, chapter) {
   `);
 }
 
-function confirmFinishNewAttempt() {
+async function confirmFinishNewAttempt() {
   const unanswered = Wizard.draftAnswers.filter((a) => a.flagged && a.chosen.length === 0).length;
   if (unanswered > 0) {
-    const ok = confirm(tn("wizard.confirmSubmitUnanswered", unanswered));
+    const ok = await showConfirm(tn("wizard.confirmSubmitUnanswered", unanswered), { confirmLabel: t("wizard.submitAttempt"), cancelLabel: t("wizard.keepEditing") });
     if (!ok) return;
   }
   finishNewAttempt();
@@ -1359,10 +1359,10 @@ function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
   `);
 }
 
-function confirmFinishRetakeAttempt() {
+async function confirmFinishRetakeAttempt() {
   const unanswered = Object.values(Wizard.responses).filter((r) => r.flagged && r.chosen.length === 0).length;
   if (unanswered > 0) {
-    const ok = confirm(tn("wizard.confirmSubmitUnanswered", unanswered));
+    const ok = await showConfirm(tn("wizard.confirmSubmitUnanswered", unanswered), { confirmLabel: t("wizard.submitAttempt"), cancelLabel: t("wizard.keepEditing") });
     if (!ok) return;
   }
   finishRetakeAttempt();

@@ -640,6 +640,70 @@ th, td {
   z-index: 200;
 }
 
+/* ---------- Dialog ---------- */
+
+.app-dialog {
+  box-sizing: border-box;
+  width: min(92vw, 420px);
+  max-height: min(90vh, 90dvh);
+  overflow-y: auto;
+  margin: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  /* Keep the bottom action row clear of the home-indicator safe area. */
+  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+}
+
+.app-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.app-dialog[open] {
+  animation: app-dialog-in 0.15s ease-out;
+}
+
+@keyframes app-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.app-dialog-message {
+  margin: 0 0 var(--space-4) 0;
+  white-space: pre-line;
+}
+
+.app-dialog-actions {
+  justify-content: flex-end;
+}
+
+/* The global `button { display: inline-flex }` rule outranks the UA
+   stylesheet's `[hidden] { display: none }` (author styles always beat
+   UA styles regardless of specificity), so it has to be restated here. */
+.app-dialog-actions [hidden] {
+  display: none;
+}
+
+html.dialog-open,
+html.dialog-open body {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dialog[open] {
+    animation: none;
+  }
+}
+
 /* ---------- Print ---------- */
 
 #print-root {
