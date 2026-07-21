@@ -3,6 +3,7 @@
 .playwright-cli/
 CLAUDE.local.md
 AGENTS.local.md
+node_modules/
 
 .scratchpad/*
 !.scratchpad/README.md

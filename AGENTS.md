@@ -8,7 +8,9 @@ See `README.md` for what the app does and how it works. In short: a single self-
 
 The one dependency is Preact + htm, vendored directly into `assets/js/vendor/` as classic UMD builds (no CDN, no npm, no build step — see `assets/js/vendor/README.md` for provenance). Every script, including everything in `assets/js/screens/`, is a plain classic `<script>` (not `type="module"`) — ES module scripts are fetched in CORS mode, which browsers refuse for `file://` origins, and this app is meant to be opened directly from disk with no server. `assets/js/vendor/preact.min.js`/`assets/js/vendor/htm.js` attach `self.preact`/`self.htm` globals; `assets/js/screens/core.js` reads those directly (`const html = self.htm.bind(self.preact.h);`).
 
-There is no build/lint/test command — this is intentional. Verify changes by opening `index.html` directly in a browser and clicking through the flow (or driving it with Playwright/`chromium-cli`, which is how this app was originally verified end-to-end: book → chapter → attempt → review/grade → retake → trends → print).
+There is no build step, and "no dependencies" above refers to the **runtime path only** — opening `index.html` directly (including via `file://`) still requires zero install, and that guarantee must not be broken. Verify functional changes by opening `index.html` directly in a browser and clicking through the flow (or driving it with Playwright/`chromium-cli`, which is how this app was originally verified end-to-end: book → chapter → attempt → review/grade → retake → trends → print).
+
+Dev-only tooling is a separate concern from the runtime and is set up: ESLint + Prettier, enforced via a pre-commit hook (Husky + lint-staged) and CI (`.github/workflows/lint.yml`). Install with `pnpm install` (this repo uses **pnpm**, not npm/yarn), then `pnpm run lint` / `pnpm run format`. **Before considering a JS or CSS change complete, run `pnpm run lint:fix` and `pnpm run format`** and resolve anything that surfaces. `eslint.config.mjs` turns off `no-undef` and scopes `no-unused-vars` to local (non-top-level) bindings only — necessary because files share an implicit global scope across `<script>` tags (see "File layout" below), so a top-level function used only by a later script looks "unused"/"undefined" from a single file's perspective.
 
 ## File layout
 
@@ -45,6 +47,7 @@ Store = {
 ```
 
 Key invariants:
+
 - `chosen` and `correctAnswer` are always arrays, even for single-select/true-false — grading is just set-equality (`gradeResponse` in `logic.js`), so there's no cardinality special-casing.
 - `correctAnswer` is `null` until the user locks it in on the Review screen; `response.correct` is `null` (ungraded) until then.
 - `questionOrder` on the chapter (not an order field on the question) is the single source of truth for question numbering — both the wizard and the print view number questions by this array, not by insertion order.
@@ -56,11 +59,12 @@ Key invariants:
 
 No client-side reactivity beyond Preact's DOM diffing — there's no component state, no props, no hooks. `app.js` holds a single in-memory `Store`. Every mutation (`addBook`, `deleteChapter`, `commitNewAttempt`, `applyCorrectAnswer`, ...) mutates `Store`, calls `saveStore()`, then a full `render()` re-derives the current screen from `location.hash` and rebuilds that screen's entire vdom tree from scratch. Preact then diffs that tree against what's already in `#main` and patches only what changed — so a full top-down rebuild-in-JS is cheap, but the actual DOM keeps focus/scroll position and doesn't flash, unlike the plain-string/`innerHTML` approach this replaced.
 
-The one exception is the New Attempt / Retake wizard: it holds transient in-memory state in a module-level `Wizard` object in `assets/js/screens/wizard.js` (question-by-question progress, draft answers) that is *not* persisted to `Store`/`localStorage` until the user finishes the attempt. Abandoning a wizard mid-flow currently discards it.
+The one exception is the New Attempt / Retake wizard: it holds transient in-memory state in a module-level `Wizard` object in `assets/js/screens/wizard.js` (question-by-question progress, draft answers) that is _not_ persisted to `Store`/`localStorage` until the user finishes the attempt. Abandoning a wizard mid-flow currently discards it.
 
 ## Routing
 
 Hash-based, parsed in `render()` in `assets/js/screens/core.js`, which dispatches to each screen's `render*` function:
+
 - `#/` — Home/dashboard (recent activity)
 - `#/books` — Book list
 - `#/data` — Data management (see "Data & backups" in `README.md` for what it shows)

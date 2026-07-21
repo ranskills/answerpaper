@@ -35,7 +35,8 @@ function cycleTheme() {
 function updateThemeToggleButton() {
   const btn = document.getElementById("theme-toggle");
   const current = getStoredTheme();
-  const label = current === "light" ? t("theme.light") : current === "dark" ? t("theme.dark") : t("theme.auto");
+  const label =
+    current === "light" ? t("theme.light") : current === "dark" ? t("theme.dark") : t("theme.auto");
   btn.textContent = t("theme.label", { mode: label });
 }
 
@@ -56,7 +57,7 @@ function loadStore() {
       return emptyStore();
     }
     return Object.assign(emptyStore(), parsed);
-  } catch (e) {
+  } catch {
     return emptyStore();
   }
 }
@@ -87,7 +88,12 @@ function resetStore() {
 /* ---------- Books ---------- */
 
 function addBook(title) {
-  const book = { id: uid("b"), title: title.trim(), archived: false, createdAt: new Date().toISOString() };
+  const book = {
+    id: uid("b"),
+    title: title.trim(),
+    archived: false,
+    createdAt: new Date().toISOString(),
+  };
   Store.books.push(book);
   saveStore();
   return book;
@@ -210,7 +216,8 @@ function commitRetakeAttempt(chapterId, responsesByQuestionId, startedAt) {
   const responses = chapter.questionOrder.map((qid) => {
     const question = Store.questions.find((q) => q.id === qid);
     const entry = responsesByQuestionId[qid] || { chosen: [], flagged: false };
-    const correct = entry.chosen.length === 0 ? null : gradeResponse(entry.chosen, question.correctAnswer);
+    const correct =
+      entry.chosen.length === 0 ? null : gradeResponse(entry.chosen, question.correctAnswer);
     return { questionId: qid, chosen: entry.chosen, flagged: !!entry.flagged, correct };
   });
   const attempt = {
@@ -242,7 +249,9 @@ function addQuestionToChapter(chapterId, type, config) {
 }
 
 function questionCascadeCounts(chapterId, questionId) {
-  const attempts = Store.attempts.filter((a) => a.chapterId === chapterId && a.responses.some((r) => r.questionId === questionId));
+  const attempts = Store.attempts.filter(
+    (a) => a.chapterId === chapterId && a.responses.some((r) => r.questionId === questionId),
+  );
   return { attemptCount: attempts.length };
 }
 

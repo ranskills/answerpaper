@@ -1,0 +1,8 @@
+node_modules/
+assets/js/vendor/
+.claude/
+.agents/
+.scratchpad/
+.playwright/
+.playwright-cli/
+pnpm-lock.yaml
