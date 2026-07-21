@@ -66,7 +66,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
 }
@@ -81,7 +82,9 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   line-height: 1.2;
   margin: 0 0 var(--space-3) 0;
 }
@@ -243,7 +246,8 @@ main {
 
 /* ---------- Buttons ---------- */
 
-button, .btn {
+button,
+.btn {
   font: inherit;
   min-height: 44px;
   padding: var(--space-2) var(--space-3);
@@ -259,17 +263,20 @@ button, .btn {
   gap: var(--space-2);
 }
 
-button:hover, .btn:hover {
+button:hover,
+.btn:hover {
   background: var(--surface-2);
 }
 
-button.primary, .btn.primary {
+button.primary,
+.btn.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
 
-button.primary:hover, .btn.primary:hover {
+button.primary:hover,
+.btn.primary:hover {
   filter: brightness(1.08);
 }
 
@@ -465,7 +472,8 @@ label {
   font-size: 0.9rem;
 }
 
-input[type="text"], input[type="number"] {
+input[type="text"],
+input[type="number"] {
   font: inherit;
   min-height: 44px;
   width: 100%;
@@ -519,7 +527,11 @@ fieldset {
     linear-gradient(to left, rgba(0, 0, 0, 0.3), rgba(255, 255, 255, 0) 60%) right;
   background-repeat: no-repeat;
   background-color: var(--surface);
-  background-size: 32px 100%, 32px 100%, 20px 100%, 20px 100%;
+  background-size:
+    32px 100%,
+    32px 100%,
+    20px 100%,
+    20px 100%;
   background-attachment: local, local, scroll, scroll;
 }
 
@@ -528,7 +540,8 @@ table {
   min-width: 100%;
 }
 
-th, td {
+th,
+td {
   text-align: left;
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
@@ -543,9 +556,15 @@ th, td {
   font-weight: 600;
 }
 
-.status-correct { color: var(--success); }
-.status-incorrect { color: var(--error); }
-.status-ungraded { color: var(--neutral); }
+.status-correct {
+  color: var(--success);
+}
+.status-incorrect {
+  color: var(--error);
+}
+.status-ungraded {
+  color: var(--neutral);
+}
 
 /* ---------- Chart ---------- */
 

@@ -19,15 +19,40 @@ function renderReview(bookId, chapterId, attemptId) {
   const rows = attempt.responses.map((response, idx) => {
     const question = Store.questions.find((q) => q.id === response.questionId);
     const chosenLabel = response.chosen.length
-      ? response.chosen.map(formatAnswerValue).join(", ") + (response.flagged ? t("review.flaggedSuffix") : "")
-      : (response.flagged ? t("review.flaggedNoAnswer") : t("review.noAnswer"));
+      ? response.chosen.map(formatAnswerValue).join(", ") +
+        (response.flagged ? t("review.flaggedSuffix") : "")
+      : response.flagged
+        ? t("review.flaggedNoAnswer")
+        : t("review.noAnswer");
     const isLocked = question.correctAnswer !== null && question.correctAnswer !== undefined;
     const unanswered = response.chosen.length === 0;
-    const statusClass = !isLocked ? "status-ungraded" : unanswered ? "status-incorrect" : response.correct ? "status-correct" : "status-incorrect";
-    const statusText = !isLocked ? t("review.statusNotGraded") : unanswered ? t("review.statusUnanswered") : response.correct ? t("review.statusCorrect") : t("review.statusIncorrect");
+    const statusClass = !isLocked
+      ? "status-ungraded"
+      : unanswered
+        ? "status-incorrect"
+        : response.correct
+          ? "status-correct"
+          : "status-incorrect";
+    const statusText = !isLocked
+      ? t("review.statusNotGraded")
+      : unanswered
+        ? t("review.statusUnanswered")
+        : response.correct
+          ? t("review.statusCorrect")
+          : t("review.statusIncorrect");
 
     if (compact) {
-      return renderCompactReviewRow(bookId, chapterId, attemptId, question, idx, chosenLabel, statusClass, statusText, isLocked);
+      return renderCompactReviewRow(
+        bookId,
+        chapterId,
+        attemptId,
+        question,
+        idx,
+        chosenLabel,
+        statusClass,
+        statusText,
+        isLocked,
+      );
     }
 
     let correctInput;
@@ -37,8 +62,14 @@ function renderReview(bookId, chapterId, attemptId) {
         const checked = question.correctAnswer && question.correctAnswer.includes(label);
         return html`
           <div class="choice-row" key=${label}>
-            <input type=${inputType} name=${"correct-" + question.id} id=${"correct-" + question.id + "-" + label} value=${label} checked=${checked}
-              onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)} />
+            <input
+              type=${inputType}
+              name=${"correct-" + question.id}
+              id=${"correct-" + question.id + "-" + label}
+              value=${label}
+              checked=${checked}
+              onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)}
+            />
             <label for=${"correct-" + question.id + "-" + label} style="margin:0">${label}</label>
           </div>
         `;
@@ -48,14 +79,30 @@ function renderReview(bookId, chapterId, attemptId) {
       const falseChecked = question.correctAnswer && question.correctAnswer.includes("false");
       correctInput = html`
         <div class="choice-row">
-          <input type="radio" name=${"correct-" + question.id} id=${"correct-" + question.id + "-true"} value="true" checked=${trueChecked}
-            onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)} />
-          <label for=${"correct-" + question.id + "-true"} style="margin:0">${t("common.trueLabel")}</label>
+          <input
+            type="radio"
+            name=${"correct-" + question.id}
+            id=${"correct-" + question.id + "-true"}
+            value="true"
+            checked=${trueChecked}
+            onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)}
+          />
+          <label for=${"correct-" + question.id + "-true"} style="margin:0"
+            >${t("common.trueLabel")}</label
+          >
         </div>
         <div class="choice-row">
-          <input type="radio" name=${"correct-" + question.id} id=${"correct-" + question.id + "-false"} value="false" checked=${falseChecked}
-            onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)} />
-          <label for=${"correct-" + question.id + "-false"} style="margin:0">${t("common.falseLabel")}</label>
+          <input
+            type="radio"
+            name=${"correct-" + question.id}
+            id=${"correct-" + question.id + "-false"}
+            value="false"
+            checked=${falseChecked}
+            onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)}
+          />
+          <label for=${"correct-" + question.id + "-false"} style="margin:0"
+            >${t("common.falseLabel")}</label
+          >
         </div>
       `;
     }
@@ -63,9 +110,17 @@ function renderReview(bookId, chapterId, attemptId) {
     return html`
       <div class="card" id=${"q-card-" + (idx + 1)} key=${response.questionId}>
         <h2>${t("common.questionN", { n: idx + 1 })}</h2>
-        <p>${t("review.yourAnswerLine")} <strong>${chosenLabel}</strong> — <span class=${statusClass}>${statusText}</span></p>
-        <fieldset><legend>${t("chapterDetail.colCorrectAnswer")}</legend>${correctInput}</fieldset>
-        <p class="save-flash" id=${"save-flash-" + question.id} aria-live="polite">${isLocked ? t("review.saved") : ""}</p>
+        <p>
+          ${t("review.yourAnswerLine")} <strong>${chosenLabel}</strong> —
+          <span class=${statusClass}>${statusText}</span>
+        </p>
+        <fieldset>
+          <legend>${t("chapterDetail.colCorrectAnswer")}</legend>
+          ${correctInput}
+        </fieldset>
+        <p class="save-flash" id=${"save-flash-" + question.id} aria-live="polite">
+          ${isLocked ? t("review.saved") : ""}
+        </p>
       </div>
     `;
   });
@@ -73,15 +128,45 @@ function renderReview(bookId, chapterId, attemptId) {
   mount(html`
     <p><a href=${"#/books/" + bookId + "/chapters/" + chapterId}>← ${chapter.title}</a></p>
     <h1>${t("review.reviewAndGrade")}</h1>
-    <p class="wizard-progress">${t("review.gradedProgress", { graded: gradedCount, total: attempt.responses.length, correct: correctCount })}</p>
+    <p class="wizard-progress">
+      ${t("review.gradedProgress", { graded: gradedCount, total: attempt.responses.length, correct: correctCount })}
+    </p>
     <p>${t("review.hint")}</p>
     <div class="filter-tabs" role="group" aria-label=${t("review.displayModeLabel")}>
-      <button type="button" aria-pressed=${!compact} onClick=${() => setReviewCompact(bookId, chapterId, attemptId, false)}>${t("review.detailed")}</button>
-      <button type="button" aria-pressed=${compact} onClick=${() => setReviewCompact(bookId, chapterId, attemptId, true)}>${t("review.compact")}</button>
+      <button
+        type="button"
+        aria-pressed=${!compact}
+        onClick=${() => setReviewCompact(bookId, chapterId, attemptId, false)}
+      >
+        ${t("review.detailed")}
+      </button>
+      <button
+        type="button"
+        aria-pressed=${compact}
+        onClick=${() => setReviewCompact(bookId, chapterId, attemptId, true)}
+      >
+        ${t("review.compact")}
+      </button>
     </div>
-    ${compact
-      ? html`<div class="table-wrap"><table><thead><tr><th scope="col">${t("chapterDetail.colNum")}</th><th scope="col">${t("review.colYourAnswer")}</th><th scope="col">${t("review.colStatus")}</th><th scope="col">${t("chapterDetail.colCorrectAnswer")}</th></tr></thead><tbody>${rows}</tbody></table></div>`
-      : rows}
+    ${
+      compact
+        ? html`<div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">${t("chapterDetail.colNum")}</th>
+                  <th scope="col">${t("review.colYourAnswer")}</th>
+                  <th scope="col">${t("review.colStatus")}</th>
+                  <th scope="col">${t("chapterDetail.colCorrectAnswer")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>`
+        : rows
+    }
   `);
 
   if (scrollToQuestionNum !== null) {
@@ -124,7 +209,17 @@ function handleCompactSelectChange(questionId, value, bookId, chapterId, attempt
   renderReview(bookId, chapterId, attemptId);
 }
 
-function renderCompactReviewRow(bookId, chapterId, attemptId, question, idx, chosenLabel, statusClass, statusText, isLocked) {
+function renderCompactReviewRow(
+  bookId,
+  chapterId,
+  attemptId,
+  question,
+  idx,
+  chosenLabel,
+  statusClass,
+  statusText,
+  isLocked,
+) {
   let correctCell;
   if (question.type === "mcq" && question.config.multiSelect) {
     if (uiState.compactEditQuestionId === question.id) {
@@ -132,29 +227,62 @@ function renderCompactReviewRow(bookId, chapterId, attemptId, question, idx, cho
         const checked = question.correctAnswer && question.correctAnswer.includes(label);
         return html`
           <div class="choice-row" key=${label}>
-            <input type="checkbox" name=${"correct-" + question.id} id=${"correct-" + question.id + "-" + label} value=${label} checked=${checked}
-              onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)} />
+            <input
+              type="checkbox"
+              name=${"correct-" + question.id}
+              id=${"correct-" + question.id + "-" + label}
+              value=${label}
+              checked=${checked}
+              onChange=${() => handleCorrectAnswerChange(question.id, bookId, chapterId, attemptId)}
+            />
             <label for=${"correct-" + question.id + "-" + label} style="margin:0">${label}</label>
           </div>
         `;
       });
       correctCell = html`
-        <fieldset><legend class="sr-only">${t("review.correctAnswerForQuestion", { n: idx + 1 })}</legend>${checkboxes}</fieldset>
-        <button type="button" class="link-inline" onClick=${() => toggleCompactEdit(bookId, chapterId, attemptId, question.id)}>${t("review.done")}</button>
+        <fieldset>
+          <legend class="sr-only">${t("review.correctAnswerForQuestion", { n: idx + 1 })}</legend>
+          ${checkboxes}
+        </fieldset>
+        <button
+          type="button"
+          class="link-inline"
+          onClick=${() => toggleCompactEdit(bookId, chapterId, attemptId, question.id)}
+        >
+          ${t("review.done")}
+        </button>
       `;
     } else {
-      const label = isLocked ? question.correctAnswer.map(formatAnswerValue).join(", ") : t("review.notSet");
-      correctCell = html`<button type="button" class="link-inline" onClick=${() => toggleCompactEdit(bookId, chapterId, attemptId, question.id)}>${label}</button>`;
+      const label = isLocked
+        ? question.correctAnswer.map(formatAnswerValue).join(", ")
+        : t("review.notSet");
+      correctCell = html`<button
+        type="button"
+        class="link-inline"
+        onClick=${() => toggleCompactEdit(bookId, chapterId, attemptId, question.id)}
+      >
+        ${label}
+      </button>`;
     }
   } else {
     const options = question.type === "mcq" ? question.config.optionLabels : ["true", "false"];
     correctCell = html`
-      <select aria-label=${t("review.correctAnswerForQuestion", { n: idx + 1 })}
-        onChange=${(e) => handleCompactSelectChange(question.id, e.target.value, bookId, chapterId, attemptId)}>
+      <select
+        aria-label=${t("review.correctAnswerForQuestion", { n: idx + 1 })}
+        onChange=${(e) => handleCompactSelectChange(question.id, e.target.value, bookId, chapterId, attemptId)}
+      >
         <option value="" selected=${!isLocked}>${t("review.notSet")}</option>
-        ${options.map((opt) => html`
-          <option value=${opt} selected=${isLocked && question.correctAnswer.includes(opt)} key=${opt}>${question.type === "truefalse" ? formatAnswerValue(opt) : opt}</option>
-        `)}
+        ${options.map(
+          (opt) => html`
+            <option
+              value=${opt}
+              selected=${isLocked && question.correctAnswer.includes(opt)}
+              key=${opt}
+            >
+              ${question.type === "truefalse" ? formatAnswerValue(opt) : opt}
+            </option>
+          `,
+        )}
       </select>
     `;
   }

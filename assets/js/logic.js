@@ -22,14 +22,18 @@ function setCorrectAnswer(store, questionId, correctAnswer) {
   store.attempts.forEach((attempt) => {
     attempt.responses.forEach((response) => {
       if (response.questionId === questionId) {
-        response.correct = response.chosen.length === 0 ? null : gradeResponse(response.chosen, correctAnswer);
+        response.correct =
+          response.chosen.length === 0 ? null : gradeResponse(response.chosen, correctAnswer);
       }
     });
   });
 }
 
 function computeAttemptScore(store, attempt) {
-  let lockedCount = 0, correctCount = 0, unansweredCount = 0, trulyUngradedCount = 0;
+  let lockedCount = 0,
+    correctCount = 0,
+    unansweredCount = 0,
+    trulyUngradedCount = 0;
   attempt.responses.forEach((response) => {
     const question = store.questions.find((q) => q.id === response.questionId);
     if (!question || question.correctAnswer === null || question.correctAnswer === undefined) {
@@ -118,7 +122,8 @@ function chapterLastActivity(store, chapterId) {
   if (!chapter) return null;
   let latest = chapter.createdAt;
   store.attempts.forEach((a) => {
-    if (a.chapterId === chapterId && new Date(a.finishedAt) > new Date(latest)) latest = a.finishedAt;
+    if (a.chapterId === chapterId && new Date(a.finishedAt) > new Date(latest))
+      latest = a.finishedAt;
   });
   return latest;
 }
@@ -208,7 +213,9 @@ function computeOverallStats(store, now) {
 // that case is already covered by "Needs attention" (not-started).
 function computeContinueChapter(store) {
   const activeBookIds = new Set(store.books.filter((b) => !b.archived).map((b) => b.id));
-  const attempts = store.attempts.slice().sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
+  const attempts = store.attempts
+    .slice()
+    .sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
 
   for (const attempt of attempts) {
     const chapter = store.chapters.find((c) => c.id === attempt.chapterId);
@@ -246,7 +253,8 @@ function computeNeedsAttention(store, limit) {
     if (score.trulyUngradedCount > 0) {
       items.push({
         type: "ungraded",
-        book, chapter,
+        book,
+        chapter,
         attemptId: latest.id,
         ungradedCount: score.trulyUngradedCount,
         sortDate: latest.finishedAt,
@@ -254,11 +262,14 @@ function computeNeedsAttention(store, limit) {
       return;
     }
 
-    const flaggedWrongCount = latest.responses.filter((r) => r.flagged && r.correct === false).length;
+    const flaggedWrongCount = latest.responses.filter(
+      (r) => r.flagged && r.correct === false,
+    ).length;
     if (flaggedWrongCount > 0) {
       items.push({
         type: "flagged",
-        book, chapter,
+        book,
+        chapter,
         attemptId: latest.id,
         flaggedWrongCount,
         sortDate: latest.finishedAt,

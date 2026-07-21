@@ -1,59 +1,65 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A self-contained exam-practice app: work through a book's chapters, grade your own answers, retake chapters, and track trends over time. No backend, no login.">
-<title>AnswerPaper</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Ctext x='16' y='23' font-family='Arial, sans-serif' font-weight='700' font-size='19' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/styles.css">
-<script>
-(function () {
-  var t = localStorage.getItem("answerpaper.theme");
-  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
-})();
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main" id="skip-link">Skip to main content</a>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A self-contained exam-practice app: work through a book's chapters, grade your own answers, retake chapters, and track trends over time. No backend, no login."
+    />
+    <title>AnswerPaper</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Ctext x='16' y='23' font-family='Arial, sans-serif' font-weight='700' font-size='19' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <script>
+      (function () {
+        var t = localStorage.getItem("answerpaper.theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main" id="skip-link">Skip to main content</a>
 
-<header class="app-header no-print">
-  <a class="brand" href="#/">AnswerPaper</a>
-  <nav aria-label="Primary" id="primary-nav">
-    <a href="#/" id="nav-home">Home</a>
-    <a href="#/books" id="nav-books">Books</a>
-    <a href="#/data" id="nav-data">Data</a>
-    <div class="header-settings">
-      <button id="theme-toggle" class="header-toggle" type="button">Theme: Auto</button>
-      <button id="lang-toggle" class="header-toggle" type="button">Language: English</button>
-    </div>
-  </nav>
-</header>
+    <header class="app-header no-print">
+      <a class="brand" href="#/">AnswerPaper</a>
+      <nav aria-label="Primary" id="primary-nav">
+        <a href="#/" id="nav-home">Home</a>
+        <a href="#/books" id="nav-books">Books</a>
+        <a href="#/data" id="nav-data">Data</a>
+        <div class="header-settings">
+          <button id="theme-toggle" class="header-toggle" type="button">Theme: Auto</button>
+          <button id="lang-toggle" class="header-toggle" type="button">Language: English</button>
+        </div>
+      </nav>
+    </header>
 
-<main id="main" class="no-print"></main>
+    <main id="main" class="no-print"></main>
 
-<div id="print-root" aria-hidden="true"></div>
+    <div id="print-root" aria-hidden="true"></div>
 
-<footer class="app-footer no-print">AnswerPaper <span id="version-tag"></span></footer>
+    <footer class="app-footer no-print">AnswerPaper <span id="version-tag"></span></footer>
 
-<script src="assets/js/logic.js"></script>
-<script src="assets/js/i18n.js"></script>
-<script src="assets/js/dialog.js"></script>
-<script src="assets/js/app.js"></script>
-<script src="assets/js/vendor/preact.min.js"></script>
-<script src="assets/js/vendor/htm.js"></script>
-<script src="assets/js/screens/core.js"></script>
-<script src="assets/js/screens/home.js"></script>
-<script src="assets/js/screens/books.js"></script>
-<script src="assets/js/screens/data.js"></script>
-<script src="assets/js/screens/chapters.js"></script>
-<script src="assets/js/screens/chapter-detail.js"></script>
-<script src="assets/js/screens/wizard.js"></script>
-<script src="assets/js/screens/wizard-new.js"></script>
-<script src="assets/js/screens/wizard-retake.js"></script>
-<script src="assets/js/screens/review.js"></script>
-<script src="assets/js/screens/trends.js"></script>
-<script src="assets/js/sample-data.js"></script>
-<script src="assets/js/print.js"></script>
-</body>
+    <script src="assets/js/logic.js"></script>
+    <script src="assets/js/i18n.js"></script>
+    <script src="assets/js/dialog.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="assets/js/vendor/preact.min.js"></script>
+    <script src="assets/js/vendor/htm.js"></script>
+    <script src="assets/js/screens/core.js"></script>
+    <script src="assets/js/screens/home.js"></script>
+    <script src="assets/js/screens/books.js"></script>
+    <script src="assets/js/screens/data.js"></script>
+    <script src="assets/js/screens/chapters.js"></script>
+    <script src="assets/js/screens/chapter-detail.js"></script>
+    <script src="assets/js/screens/wizard.js"></script>
+    <script src="assets/js/screens/wizard-new.js"></script>
+    <script src="assets/js/screens/wizard-retake.js"></script>
+    <script src="assets/js/screens/review.js"></script>
+    <script src="assets/js/screens/trends.js"></script>
+    <script src="assets/js/sample-data.js"></script>
+    <script src="assets/js/print.js"></script>
+  </body>
 </html>

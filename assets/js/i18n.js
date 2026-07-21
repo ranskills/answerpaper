@@ -28,7 +28,10 @@ const STRINGS = {
       timeStudied: "Time studied",
       needsAttention: "Needs attention",
       notStartedYet: "Not started yet",
-      flaggedToReview: { one: "{count} flagged answer to review", other: "{count} flagged answers to review" },
+      flaggedToReview: {
+        one: "{count} flagged answer to review",
+        other: "{count} flagged answers to review",
+      },
       recentActivity: "Recent activity",
       colChapter: "Chapter",
       colDate: "Date",
@@ -44,7 +47,10 @@ const STRINGS = {
       falseLabel: "False",
       ungraded: "Ungraded",
       unansweredCount: "{count} unanswered",
-      questionsNotGraded: { one: "{count} question not yet graded", other: "{count} questions not yet graded" },
+      questionsNotGraded: {
+        one: "{count} question not yet graded",
+        other: "{count} questions not yet graded",
+      },
       trendImproving: "↑ Improving",
       trendDeclining: "↓ Declining",
       trendSteady: "→ Steady",
@@ -84,7 +90,8 @@ const STRINGS = {
     },
     books: {
       title: "Books",
-      onboardingHint: "Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.",
+      onboardingHint:
+        "Start here: add a book, then add chapters to it, then take an attempt on a chapter to start practicing.",
       filterGroupLabel: "Filter books",
       filterAll: "All ({count})",
       filterActive: "Active ({count})",
@@ -98,14 +105,17 @@ const STRINGS = {
       noArchivedBooks: "No archived books.",
       noActiveBooks: "No active books — all books are archived.",
       noBooksYet: "No books yet.",
-      confirmDeleteAll: "Delete ALL data — {books}, {chapters}, {attempts} total? This cannot be undone. Consider using Export first if you want a backup.",
-      confirmDeleteBook: "Delete book '{title}' and all {chapters} ({attempts} total)? This cannot be undone.",
+      confirmDeleteAll:
+        "Delete ALL data — {books}, {chapters}, {attempts} total? This cannot be undone. Consider using Export first if you want a backup.",
+      confirmDeleteBook:
+        "Delete book '{title}' and all {chapters} ({attempts} total)? This cannot be undone.",
     },
     data: {
       title: "Data",
       emptyHint: "There's no data to manage yet.",
       dangerZone: "Danger zone",
-      dangerHint: "Permanently erase all books, chapters, questions, and attempts from this browser. This cannot be undone.",
+      dangerHint:
+        "Permanently erase all books, chapters, questions, and attempts from this browser. This cannot be undone.",
       clearAllData: "Clear all data",
       storage: "Storage",
       storedInBrowser: "{size} stored in this browser",
@@ -115,7 +125,8 @@ const STRINGS = {
       neverExported: "Never exported yet",
       exportData: "Export data",
       importData: "Import data",
-      confirmImport: "Importing will replace your current data ({books}, {chapters}, {attempts}). Continue?",
+      confirmImport:
+        "Importing will replace your current data ({books}, {chapters}, {attempts}). Continue?",
       importFailed: "Import failed: {message}",
       exportedToast: "Exported {filename}",
       invalidFileFormat: "Invalid file format",
@@ -162,9 +173,11 @@ const STRINGS = {
       allowMultiSelect: "Allow selecting more than one option",
       questionType: "Question type",
       multipleChoice: "Multiple choice",
-      correctAnswerHint: "The correct answer is set later, from the Review screen of an attempt that includes this question.",
+      correctAnswerHint:
+        "The correct answer is set later, from the Review screen of an attempt that includes this question.",
       addQuestion: "Add question",
-      confirmDeleteQuestion: "Delete question {n}? This removes it from {attempts} too, and cannot be undone.",
+      confirmDeleteQuestion:
+        "Delete question {n}? This removes it from {attempts} too, and cannot be undone.",
       chartAriaLabel: "Chapter score percentage over time",
     },
     wizard: {
@@ -195,11 +208,17 @@ const STRINGS = {
       previousQuestion: "Previous question",
       removeAndFinish: "Remove this question & finish",
       cancelAttempt: "Cancel attempt",
-      flaggedForReview: { one: "{count} question flagged for review", other: "{count} questions flagged for review" },
+      flaggedForReview: {
+        one: "{count} question flagged for review",
+        other: "{count} questions flagged for review",
+      },
       takeAnotherLook: "Take another look before submitting, or submit as-is.",
       noneLeft: "None left — you're all set.",
       submitAttempt: "Submit attempt",
-      confirmSubmitUnanswered: { one: "{count} flagged question has no answer yet. Submit anyway?", other: "{count} flagged questions have no answer yet. Submit anyway?" },
+      confirmSubmitUnanswered: {
+        one: "{count} flagged question has no answer yet. Submit anyway?",
+        other: "{count} flagged questions have no answer yet. Submit anyway?",
+      },
       reviewingQuestion: "Reviewing question {n}",
       saveAndReturn: "Save and return to flagged list",
       retakeTitle: "{title} — retake",
@@ -249,7 +268,7 @@ const STRINGS = {
     print: {
       docTitle: "Print:",
       printTitle: "Print: {title}",
-      printHint: "Click print, then choose \"Save as PDF\" in the print dialog.",
+      printHint: 'Click print, then choose "Save as PDF" in the print dialog.',
       print: "Print",
       ariaLabel: "Printable exam paper",
       name: "Name:",
@@ -268,7 +287,8 @@ const STRINGS = {
       onboardingChapter: "chapitre",
       onboardingMid2: "→ faites une",
       onboardingAttempt: "tentative",
-      onboardingPost: "sur le chapitre → corrigez vos réponses → recommencez et suivez vos progrès dans le temps.",
+      onboardingPost:
+        "sur le chapitre → corrigez vos réponses → recommencez et suivez vos progrès dans le temps.",
       continueStudying: "Continuer l'étude",
       lastAttempt: "Dernière tentative : {score} · {date}",
       retake: "Recommencer",
@@ -279,7 +299,10 @@ const STRINGS = {
       timeStudied: "Temps d'étude",
       needsAttention: "À revoir",
       notStartedYet: "Pas encore commencé",
-      flaggedToReview: { one: "{count} réponse signalée à revoir", other: "{count} réponses signalées à revoir" },
+      flaggedToReview: {
+        one: "{count} réponse signalée à revoir",
+        other: "{count} réponses signalées à revoir",
+      },
       recentActivity: "Activité récente",
       colChapter: "Chapitre",
       colDate: "Date",

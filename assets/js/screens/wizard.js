@@ -6,13 +6,25 @@ let Wizard = null;
 
 function wizardHasProgress() {
   if (!Wizard) return false;
-  if (Wizard.mode === "new") return Wizard.stage !== "count" && (Wizard.draftQuestions.length > 0 || Wizard.index > 0);
-  return Wizard.index > 0 || Object.keys(Wizard.responses).length > 0 || Wizard.stage !== "questions";
+  if (Wizard.mode === "new")
+    return Wizard.stage !== "count" && (Wizard.draftQuestions.length > 0 || Wizard.index > 0);
+  return (
+    Wizard.index > 0 || Object.keys(Wizard.responses).length > 0 || Wizard.stage !== "questions"
+  );
 }
 
 async function cancelWizard() {
-  const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
-  if (wizardHasProgress() && !(await showConfirm(t("wizard.confirmCancelAttempt"), { confirmLabel: t("wizard.discardAttempt"), cancelLabel: t("wizard.keepEditing"), danger: true }))) return;
+  const bookId = Wizard.bookId,
+    chapterId = Wizard.chapterId;
+  if (
+    wizardHasProgress() &&
+    !(await showConfirm(t("wizard.confirmCancelAttempt"), {
+      confirmLabel: t("wizard.discardAttempt"),
+      cancelLabel: t("wizard.keepEditing"),
+      danger: true,
+    }))
+  )
+    return;
   Wizard = null;
   navigate("/books/" + bookId + "/chapters/" + chapterId);
   render();
@@ -24,23 +36,46 @@ function renderAttemptWizard(bookId, chapterId) {
   const chapter = Store.chapters.find((c) => c.id === chapterId);
   if (!chapter) return mount(html`<p>Chapter not found.</p>`);
   const isFirstTime = chapter.questionOrder.length === 0;
-  document.title = (isFirstTime ? t("wizard.docTitleNew") : t("wizard.docTitleRetake")) + " " + chapter.title + " — " + t("common.appName");
+  document.title =
+    (isFirstTime ? t("wizard.docTitleNew") : t("wizard.docTitleRetake")) +
+    " " +
+    chapter.title +
+    " — " +
+    t("common.appName");
 
-  if (!Wizard || Wizard.chapterId !== chapterId || Wizard.mode !== (isFirstTime ? "new" : "retake")) {
+  if (
+    !Wizard ||
+    Wizard.chapterId !== chapterId ||
+    Wizard.mode !== (isFirstTime ? "new" : "retake")
+  ) {
     if (isFirstTime) {
       Wizard = {
-        chapterId, bookId, mode: "new",
-        stage: "count", total: null, index: 0,
+        chapterId,
+        bookId,
+        mode: "new",
+        stage: "count",
+        total: null,
+        index: 0,
         lastMcqConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
-        draftQuestions: [], draftAnswers: [],
-        currentType: "mcq", currentConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
-        error: null, pendingFlagged: false, reviewIndex: null,
+        draftQuestions: [],
+        draftAnswers: [],
+        currentType: "mcq",
+        currentConfig: Object.assign({}, DEFAULT_MCQ_CONFIG),
+        error: null,
+        pendingFlagged: false,
+        reviewIndex: null,
         startedAt: new Date().toISOString(),
       };
     } else {
       Wizard = {
-        chapterId, bookId, mode: "retake",
-        stage: "questions", index: 0, responses: {}, error: null, reviewQuestionId: null,
+        chapterId,
+        bookId,
+        mode: "retake",
+        stage: "questions",
+        index: 0,
+        responses: {},
+        error: null,
+        reviewQuestionId: null,
         startedAt: new Date().toISOString(),
       };
     }
@@ -57,12 +92,20 @@ function renderAnswerFieldset(type, config, chosenValues) {
     return html`
       <fieldset>
         <legend>${t("wizard.yourAnswer")}</legend>
-        ${config.optionLabels.map((label) => html`
-          <div class="choice-row" key=${label}>
-            <input type=${inputType} name="answer" id=${"opt-" + label} value=${label} checked=${chosenValues.includes(label)} />
-            <label for=${"opt-" + label} style="margin:0">${label}</label>
-          </div>
-        `)}
+        ${config.optionLabels.map(
+          (label) => html`
+            <div class="choice-row" key=${label}>
+              <input
+                type=${inputType}
+                name="answer"
+                id=${"opt-" + label}
+                value=${label}
+                checked=${chosenValues.includes(label)}
+              />
+              <label for=${"opt-" + label} style="margin:0">${label}</label>
+            </div>
+          `,
+        )}
       </fieldset>
     `;
   }
@@ -70,11 +113,23 @@ function renderAnswerFieldset(type, config, chosenValues) {
     <fieldset>
       <legend>${t("wizard.yourAnswer")}</legend>
       <div class="choice-row">
-        <input type="radio" name="answer" id="opt-true" value="true" checked=${chosenValues.includes("true")} />
+        <input
+          type="radio"
+          name="answer"
+          id="opt-true"
+          value="true"
+          checked=${chosenValues.includes("true")}
+        />
         <label for="opt-true" style="margin:0">${t("common.trueLabel")}</label>
       </div>
       <div class="choice-row">
-        <input type="radio" name="answer" id="opt-false" value="false" checked=${chosenValues.includes("false")} />
+        <input
+          type="radio"
+          name="answer"
+          id="opt-false"
+          value="false"
+          checked=${chosenValues.includes("false")}
+        />
         <label for="opt-false" style="margin:0">${t("common.falseLabel")}</label>
       </div>
     </fieldset>
@@ -98,7 +153,14 @@ function keyboardHint(type) {
 function progressBar(current, total) {
   const pct = Math.round((current / total) * 100);
   return html`
-    <div class="progress-bar" role="progressbar" aria-valuenow=${current} aria-valuemin="0" aria-valuemax=${total} aria-label=${t("wizard.progressLabel", { current, total })}>
+    <div
+      class="progress-bar"
+      role="progressbar"
+      aria-valuenow=${current}
+      aria-valuemin="0"
+      aria-valuemax=${total}
+      aria-label=${t("wizard.progressLabel", { current, total })}
+    >
       <div class="progress-bar-fill" style=${`width:${pct}%`}></div>
     </div>
   `;
@@ -131,34 +193,58 @@ function handleWizardKeydown(e) {
   if (e.shiftKey) {
     if (key.toLowerCase() === "f") {
       const flag = document.getElementById("flag-question");
-      if (flag) { e.preventDefault(); flag.click(); }
+      if (flag) {
+        e.preventDefault();
+        flag.click();
+      }
     } else if (key === "Enter") {
       const secondary = document.getElementById("wizard-secondary-action");
-      if (secondary) { e.preventDefault(); secondary.click(); }
+      if (secondary) {
+        e.preventDefault();
+        secondary.click();
+      }
     }
     return;
   }
 
   if (/^[a-h]$/i.test(key)) {
     const opt = document.getElementById("opt-" + key.toUpperCase());
-    if (opt) { e.preventDefault(); opt.click(); return; }
+    if (opt) {
+      e.preventDefault();
+      opt.click();
+      return;
+    }
   }
   if (key.toLowerCase() === "t") {
     const opt = document.getElementById("opt-true");
-    if (opt) { e.preventDefault(); opt.click(); return; }
+    if (opt) {
+      e.preventDefault();
+      opt.click();
+      return;
+    }
   }
   if (key.toLowerCase() === "f") {
     const opt = document.getElementById("opt-false");
-    if (opt) { e.preventDefault(); opt.click(); return; }
+    if (opt) {
+      e.preventDefault();
+      opt.click();
+      return;
+    }
   }
   if (key === "Enter") {
     const primary = document.getElementById("wizard-primary-action");
-    if (primary) { e.preventDefault(); primary.click(); }
+    if (primary) {
+      e.preventDefault();
+      primary.click();
+    }
     return;
   }
   if (key === "Backspace") {
     const back = document.getElementById("wizard-back-action");
-    if (back) { e.preventDefault(); back.click(); }
+    if (back) {
+      e.preventDefault();
+      back.click();
+    }
   }
 }
 

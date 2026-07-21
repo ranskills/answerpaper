@@ -5,27 +5,36 @@ function renderData() {
   const archivedCount = Store.books.filter((b) => b.archived).length;
   const earliestBookDate = Store.books.reduce(
     (earliest, b) => (!earliest || b.createdAt < earliest ? b.createdAt : earliest),
-    null
+    null,
   );
   const lastExportAt = getLastExportAt();
 
-  const emptyState = Store.books.length === 0
-    ? html`
-      <div class="card">
-        <p>${t("data.emptyHint")}</p>
-        <div class="btn-row"><button type="button" onClick=${handleLoadSampleData}>${t("common.loadSampleData")}</button></div>
-      </div>
-    `
-    : null;
+  const emptyState =
+    Store.books.length === 0
+      ? html`
+          <div class="card">
+            <p>${t("data.emptyHint")}</p>
+            <div class="btn-row">
+              <button type="button" onClick=${handleLoadSampleData}>
+                ${t("common.loadSampleData")}
+              </button>
+            </div>
+          </div>
+        `
+      : null;
 
   const dangerCard = Store.books.length
     ? html`
-      <div class="card card-danger">
-        <h2>${t("data.dangerZone")}</h2>
-        <p class="card-meta" style="margin: 0">${t("data.dangerHint")}</p>
-        <div class="btn-row"><button type="button" class="danger" onClick=${promptResetAllData}>${t("data.clearAllData")}</button></div>
-      </div>
-    `
+        <div class="card card-danger">
+          <h2>${t("data.dangerZone")}</h2>
+          <p class="card-meta" style="margin: 0">${t("data.dangerHint")}</p>
+          <div class="btn-row">
+            <button type="button" class="danger" onClick=${promptResetAllData}>
+              ${t("data.clearAllData")}
+            </button>
+          </div>
+        </div>
+      `
     : null;
 
   mount(html`
@@ -33,16 +42,28 @@ function renderData() {
     ${emptyState}
     <div class="card">
       <h2>${t("data.storage")}</h2>
-      <p class="card-meta" style="margin: 0">${t("data.storedInBrowser", { size: formatBytes(dataStorageBytes()) })}${archivedCount ? html` · ${tn("common.archivedBook", archivedCount)}` : null}</p>
+      <p class="card-meta" style="margin: 0">
+        ${t("data.storedInBrowser", { size: formatBytes(dataStorageBytes()) })}${archivedCount ? html` · ${tn("common.archivedBook", archivedCount)}` : null}
+      </p>
       ${earliestBookDate ? html`<p class="card-meta" style="margin: 0">${t("data.trackingSince", { date: formatDateShort(earliestBookDate) })}</p>` : null}
     </div>
     <div class="card">
       <h2>${t("data.backup")}</h2>
-      <p class="card-meta" style="margin: 0">${lastExportAt ? t("data.lastExported", { date: formatDate(lastExportAt) }) : t("data.neverExported")}</p>
+      <p class="card-meta" style="margin: 0">
+        ${lastExportAt ? t("data.lastExported", { date: formatDate(lastExportAt) }) : t("data.neverExported")}
+      </p>
       <div class="btn-row">
-        <button type="button" class="primary" onClick=${handleExportData}>${t("data.exportData")}</button>
-        <label class="import-label" for="import-input">${t("data.importData")}
-          <input id="import-input" type="file" accept="application/json" onChange=${handleImportFile} />
+        <button type="button" class="primary" onClick=${handleExportData}>
+          ${t("data.exportData")}
+        </button>
+        <label class="import-label" for="import-input"
+          >${t("data.importData")}
+          <input
+            id="import-input"
+            type="file"
+            accept="application/json"
+            onChange=${handleImportFile}
+          />
         </label>
       </div>
     </div>
@@ -58,12 +79,19 @@ function handleExportData() {
 async function handleImportFile(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const summary = { books: Store.books.length, chapters: Store.chapters.length, attempts: Store.attempts.length };
-  const ok = await showConfirm(t("data.confirmImport", {
-    books: tn("common.book", summary.books),
-    chapters: tn("common.chapter", summary.chapters),
-    attempts: tn("common.attempt", summary.attempts),
-  }), { confirmLabel: t("data.importData") });
+  const summary = {
+    books: Store.books.length,
+    chapters: Store.chapters.length,
+    attempts: Store.attempts.length,
+  };
+  const ok = await showConfirm(
+    t("data.confirmImport", {
+      books: tn("common.book", summary.books),
+      chapters: tn("common.chapter", summary.chapters),
+      attempts: tn("common.attempt", summary.attempts),
+    }),
+    { confirmLabel: t("data.importData") },
+  );
   if (!ok) {
     e.target.value = "";
     return;
@@ -119,14 +147,16 @@ function handleRenameBook(event, bookId) {
 async function promptDeleteBook(bookId) {
   const book = Store.books.find((b) => b.id === bookId);
   const counts = bookCascadeCounts(bookId);
-  const ok = await showConfirm(t("books.confirmDeleteBook", {
-    title: book.title,
-    chapters: tn("common.chapter", counts.chapterCount),
-    attempts: tn("common.attempt", counts.attemptCount),
-  }), { confirmLabel: t("common.delete"), danger: true });
+  const ok = await showConfirm(
+    t("books.confirmDeleteBook", {
+      title: book.title,
+      chapters: tn("common.chapter", counts.chapterCount),
+      attempts: tn("common.attempt", counts.attemptCount),
+    }),
+    { confirmLabel: t("common.delete"), danger: true },
+  );
   if (ok) {
     deleteBook(bookId);
     renderBookList();
   }
 }
-

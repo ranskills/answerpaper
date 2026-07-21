@@ -6,8 +6,11 @@ const preactRender = self.preact.render;
 
 function formatDate(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString(getLang(), { year: "numeric", month: "short", day: "numeric" }) +
-    " " + d.toLocaleTimeString(getLang(), { hour: "2-digit", minute: "2-digit" });
+  return (
+    d.toLocaleDateString(getLang(), { year: "numeric", month: "short", day: "numeric" }) +
+    " " +
+    d.toLocaleTimeString(getLang(), { hour: "2-digit", minute: "2-digit" })
+  );
 }
 
 function formatDateShort(iso) {
@@ -46,9 +49,12 @@ function formatChosenSummary(chosen) {
 }
 
 function renderTrendBadge(trend) {
-  if (trend === "improving") return html`<span class="status-correct">${t("common.trendImproving")}</span>`;
-  if (trend === "declining") return html`<span class="status-incorrect">${t("common.trendDeclining")}</span>`;
-  if (trend === "steady") return html`<span class="status-ungraded">${t("common.trendSteady")}</span>`;
+  if (trend === "improving")
+    return html`<span class="status-correct">${t("common.trendImproving")}</span>`;
+  if (trend === "declining")
+    return html`<span class="status-incorrect">${t("common.trendDeclining")}</span>`;
+  if (trend === "steady")
+    return html`<span class="status-ungraded">${t("common.trendSteady")}</span>`;
   return null;
 }
 
@@ -57,8 +63,10 @@ function formatScoreLabel(score, compact) {
   const parts = [score.scorePercent + "%"];
   if (compact) return parts[0];
   const notes = [];
-  if (score.unansweredCount > 0) notes.push(t("common.unansweredCount", { count: score.unansweredCount }));
-  if (score.trulyUngradedCount > 0) notes.push(tn("common.questionsNotGraded", score.trulyUngradedCount));
+  if (score.unansweredCount > 0)
+    notes.push(t("common.unansweredCount", { count: score.unansweredCount }));
+  if (score.trulyUngradedCount > 0)
+    notes.push(tn("common.questionsNotGraded", score.trulyUngradedCount));
   if (notes.length) parts.push("(" + notes.join(", ") + ")");
   return parts.join(" ");
 }
@@ -154,16 +162,29 @@ function render() {
 /* ---------- Shared UI state ---------- */
 
 let uiState = {
-  addBookOpen: false, addChapterOpen: false, renameBookId: null, renameChapterId: null,
-  addQuestionOpen: false, addQuestionDraft: null, bookFilter: "active", chapterDetailTab: "attempts",
-  reviewCompact: false, compactEditQuestionId: null,
+  addBookOpen: false,
+  addChapterOpen: false,
+  renameBookId: null,
+  renameChapterId: null,
+  addQuestionOpen: false,
+  addQuestionDraft: null,
+  bookFilter: "active",
+  chapterDetailTab: "attempts",
+  reviewCompact: false,
+  compactEditQuestionId: null,
 };
 
 /* ---------- Shared chart helper (Chapter detail + Trends) ---------- */
 
 function renderScoreLineChart(series) {
-  const width = 560, height = 200, padL = 36, padR = 16, padT = 28, padB = 28;
-  const innerW = width - padL - padR, innerH = height - padT - padB;
+  const width = 560,
+    height = 200,
+    padL = 36,
+    padR = 16,
+    padT = 28,
+    padB = 28;
+  const innerW = width - padL - padR,
+    innerH = height - padT - padB;
   const n = series.length;
   const x = (i) => padL + (n === 1 ? innerW / 2 : (innerW * i) / (n - 1));
   const y = (pct) => padT + innerH - (innerH * (pct === null ? 0 : pct)) / 100;
@@ -179,15 +200,26 @@ function renderScoreLineChart(series) {
   });
 
   const points = series.map((s, i) => ({ x: x(i), y: y(s.scorePercent || 0), s }));
-  const path = points.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" ");
+  const path = points
+    .map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1))
+    .join(" ");
   const showAllLabels = n <= 6;
 
   const circles = points.map((p, i) => {
     const label = p.s.scorePercent === null ? t("common.ungraded") : p.s.scorePercent + "%";
     const isEndpoint = i === 0 || i === n - 1;
-    const valueLabel = p.s.scorePercent === null || !(showAllLabels || isEndpoint) ? null : html`
-      <text class="chart-label" x=${p.x.toFixed(1)} y=${(p.y - 10).toFixed(1)} text-anchor="middle">${p.s.scorePercent}%</text>
-    `;
+    const valueLabel =
+      p.s.scorePercent === null || !(showAllLabels || isEndpoint)
+        ? null
+        : html`
+            <text
+              class="chart-label"
+              x=${p.x.toFixed(1)}
+              y=${(p.y - 10).toFixed(1)}
+              text-anchor="middle"
+              >${p.s.scorePercent}%</text
+            >
+          `;
     return html`
       <g key=${p.s.attemptId || i}>
         <circle class="chart-point" cx=${p.x.toFixed(1)} cy=${p.y.toFixed(1)} r="4" tabindex="0">
@@ -198,18 +230,36 @@ function renderScoreLineChart(series) {
     `;
   });
 
-  const dateLabels = n > 1 ? html`
-    <text class="chart-date-label" x=${points[0].x.toFixed(1)} y=${height - 6} text-anchor="start">${formatDateShort(series[0].date)}</text>
-    <text class="chart-date-label" x=${points[n - 1].x.toFixed(1)} y=${height - 6} text-anchor="end">${formatDateShort(series[n - 1].date)}</text>
-  ` : null;
+  const dateLabels =
+    n > 1
+      ? html`
+          <text
+            class="chart-date-label"
+            x=${points[0].x.toFixed(1)}
+            y=${height - 6}
+            text-anchor="start"
+            >${formatDateShort(series[0].date)}</text
+          >
+          <text
+            class="chart-date-label"
+            x=${points[n - 1].x.toFixed(1)}
+            y=${height - 6}
+            text-anchor="end"
+            >${formatDateShort(series[n - 1].date)}</text
+          >
+        `
+      : null;
 
   return html`
     <div class="chart-wrap">
-      <svg viewBox=${"0 0 " + width + " " + height} role="img" aria-label=${t("chapterDetail.chartAriaLabel")}>
+      <svg
+        viewBox=${"0 0 " + width + " " + height}
+        role="img"
+        aria-label=${t("chapterDetail.chartAriaLabel")}
+      >
         ${gridLines}
         <path class="chart-line" d=${path}></path>
-        ${circles}
-        ${dateLabels}
+        ${circles} ${dateLabels}
       </svg>
     </div>
   `;

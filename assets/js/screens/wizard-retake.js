@@ -1,7 +1,8 @@
 /* Retake wizard (chapter already has questions). */
 
 function renderRetakeWizard(bookId, chapterId, chapter) {
-  if (Wizard.stage === "flagged-review") return renderRetakeFlaggedReview(bookId, chapterId, chapter);
+  if (Wizard.stage === "flagged-review")
+    return renderRetakeFlaggedReview(bookId, chapterId, chapter);
   if (Wizard.stage === "reviewing-one") return renderRetakeReviewOne(bookId, chapterId, chapter);
 
   const i = Wizard.index;
@@ -13,16 +14,24 @@ function renderRetakeWizard(bookId, chapterId, chapter) {
 
   mount(html`
     <h1>${t("wizard.retakeTitle", { title: chapter.title })}</h1>
-    <p class="wizard-progress" tabindex="-1" autofocus>${t("wizard.questionOf", { i: i + 1, total: chapter.questionOrder.length })}${flaggedSoFar > 0 ? t("wizard.flaggedSoFar", { count: flaggedSoFar }) : ""}</p>
+    <p class="wizard-progress" tabindex="-1" autofocus>
+      ${t("wizard.questionOf", { i: i + 1, total: chapter.questionOrder.length })}${flaggedSoFar > 0 ? t("wizard.flaggedSoFar", { count: flaggedSoFar }) : ""}
+    </p>
     ${progressBar(i + 1, chapter.questionOrder.length)}
     <div class="card">
       ${renderAnswerFieldset(question.type, question.config, priorEntry.chosen)}
-      ${flagCheckbox(priorEntry.flagged, t("wizard.flagUnsure"))}
-      ${keyboardHint(question.type)}
+      ${flagCheckbox(priorEntry.flagged, t("wizard.flagUnsure"))} ${keyboardHint(question.type)}
       ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
       <div class="btn-row">
         ${i > 0 ? html`<button type="button" id="wizard-back-action" onClick=${retakeGoBack}>${t("wizard.previousQuestion")}</button>` : null}
-        <button type="button" id="wizard-primary-action" class="primary" onClick=${() => retakeCommitQuestion(questionId, isLast)}>${isLast ? t("wizard.finishAttempt") : t("wizard.nextQuestion")}</button>
+        <button
+          type="button"
+          id="wizard-primary-action"
+          class="primary"
+          onClick=${() => retakeCommitQuestion(questionId, isLast)}
+        >
+          ${isLast ? t("wizard.finishAttempt") : t("wizard.nextQuestion")}
+        </button>
         <button type="button" onClick=${cancelWizard}>${t("wizard.cancelAttempt")}</button>
       </div>
     </div>
@@ -37,7 +46,9 @@ function retakeGoBack() {
 }
 
 function retakeCommitQuestion(questionId, isLast) {
-  const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+  const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map(
+    (el) => el.value,
+  );
   const flagged = document.getElementById("flag-question").checked;
 
   if (checked.length === 0 && !flagged) {
@@ -51,7 +62,9 @@ function retakeCommitQuestion(questionId, isLast) {
 
   if (isLast) {
     const chapter = Store.chapters.find((c) => c.id === Wizard.chapterId);
-    const anyFlagged = chapter.questionOrder.some((qid) => Wizard.responses[qid] && Wizard.responses[qid].flagged);
+    const anyFlagged = chapter.questionOrder.some(
+      (qid) => Wizard.responses[qid] && Wizard.responses[qid].flagged,
+    );
     if (anyFlagged) {
       Wizard.stage = "flagged-review";
       render();
@@ -67,19 +80,24 @@ function retakeCommitQuestion(questionId, isLast) {
 
 function finishRetakeAttempt() {
   const attempt = commitRetakeAttempt(Wizard.chapterId, Wizard.responses, Wizard.startedAt);
-  const bookId = Wizard.bookId, chapterId = Wizard.chapterId;
+  const bookId = Wizard.bookId,
+    chapterId = Wizard.chapterId;
   Wizard = null;
   navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
   render();
 }
 
 function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
-  const flaggedQids = chapter.questionOrder.filter((qid) => Wizard.responses[qid] && Wizard.responses[qid].flagged);
+  const flaggedQids = chapter.questionOrder.filter(
+    (qid) => Wizard.responses[qid] && Wizard.responses[qid].flagged,
+  );
   const items = flaggedQids.map((qid) => {
     const num = chapter.questionOrder.indexOf(qid) + 1;
     return html`
       <li class="flagged-item" key=${qid}>
-        <button type="button" onClick=${() => reviewRetakeFlaggedQuestion(qid)}>${t("common.questionN", { n: num })}</button>
+        <button type="button" onClick=${() => reviewRetakeFlaggedQuestion(qid)}>
+          ${t("common.questionN", { n: num })}
+        </button>
         <span class="card-meta">${formatChosenSummary(Wizard.responses[qid].chosen)}</span>
       </li>
     `;
@@ -90,16 +108,27 @@ function renderRetakeFlaggedReview(bookId, chapterId, chapter) {
     <div class="card">
       <h2 tabindex="-1" autofocus>${tn("wizard.flaggedForReview", flaggedQids.length)}</h2>
       <p>${t("wizard.takeAnotherLook")}</p>
-      <ul class="flagged-list">${items.length ? items : html`<li>${t("wizard.noneLeft")}</li>`}</ul>
-      <div class="btn-row"><button type="button" class="primary" onClick=${confirmFinishRetakeAttempt}>${t("wizard.submitAttempt")}</button></div>
+      <ul class="flagged-list">
+        ${items.length ? items : html`<li>${t("wizard.noneLeft")}</li>`}
+      </ul>
+      <div class="btn-row">
+        <button type="button" class="primary" onClick=${confirmFinishRetakeAttempt}>
+          ${t("wizard.submitAttempt")}
+        </button>
+      </div>
     </div>
   `);
 }
 
 async function confirmFinishRetakeAttempt() {
-  const unanswered = Object.values(Wizard.responses).filter((r) => r.flagged && r.chosen.length === 0).length;
+  const unanswered = Object.values(Wizard.responses).filter(
+    (r) => r.flagged && r.chosen.length === 0,
+  ).length;
   if (unanswered > 0) {
-    const ok = await showConfirm(tn("wizard.confirmSubmitUnanswered", unanswered), { confirmLabel: t("wizard.submitAttempt"), cancelLabel: t("wizard.keepEditing") });
+    const ok = await showConfirm(tn("wizard.confirmSubmitUnanswered", unanswered), {
+      confirmLabel: t("wizard.submitAttempt"),
+      cancelLabel: t("wizard.keepEditing"),
+    });
     if (!ok) return;
   }
   finishRetakeAttempt();
@@ -119,14 +148,22 @@ function renderRetakeReviewOne(bookId, chapterId, chapter) {
 
   mount(html`
     <h1>${t("wizard.retakeTitle", { title: chapter.title })}</h1>
-    <p class="wizard-progress" tabindex="-1" autofocus>${t("wizard.reviewingQuestion", { n: num })}</p>
+    <p class="wizard-progress" tabindex="-1" autofocus>
+      ${t("wizard.reviewingQuestion", { n: num })}
+    </p>
     <div class="card">
       ${renderAnswerFieldset(question.type, question.config, entry.chosen)}
-      ${flagCheckbox(entry.flagged, t("wizard.flagStillUnsure"))}
-      ${keyboardHint(question.type)}
+      ${flagCheckbox(entry.flagged, t("wizard.flagStillUnsure"))} ${keyboardHint(question.type)}
       ${Wizard.error ? html`<p class="field-error" role="alert">${Wizard.error}</p>` : null}
       <div class="btn-row">
-        <button type="button" id="wizard-primary-action" class="primary" onClick=${saveRetakeReviewedQuestion}>${t("wizard.saveAndReturn")}</button>
+        <button
+          type="button"
+          id="wizard-primary-action"
+          class="primary"
+          onClick=${saveRetakeReviewedQuestion}
+        >
+          ${t("wizard.saveAndReturn")}
+        </button>
       </div>
     </div>
   `);
@@ -134,7 +171,9 @@ function renderRetakeReviewOne(bookId, chapterId, chapter) {
 
 function saveRetakeReviewedQuestion() {
   const questionId = Wizard.reviewQuestionId;
-  const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((el) => el.value);
+  const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map(
+    (el) => el.value,
+  );
   const flagged = document.getElementById("flag-question").checked;
 
   if (checked.length === 0 && !flagged) {
