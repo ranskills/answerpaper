@@ -18,7 +18,7 @@ function buildPrintView(chapterId) {
   const questionsHtml = chapter.questionOrder
     .map((qid, idx) => {
       const question = Store.questions.find((q) => q.id === qid);
-      let optionsHtml = "";
+      let optionsHtml;
       if (question.type === "mcq") {
         optionsHtml = question.config.optionLabels
           .map(
