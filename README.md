@@ -6,6 +6,8 @@ A self-contained exam-practice app for working through a book's chapters, gradin
 
 No backend, no login, no build step, no runtime dependencies — it's a handful of static files you can open directly in a browser or host on GitHub Pages.
 
+> **This is not a trivia/quiz-content app.** It never stores question or answer _text_ — questions are referenced only by number ("Question 1", "Question 2", ...) and options only by letter (A, B, C, ...) or True/False. The actual question/answer content (e.g. "What's the capital of France?" → "Paris") lives in whatever you're practicing from — a paper exam, a textbook, a past assessment — which you already have open beside you. AnswerPaper just tracks structure, your picks, your self-graded correct answers, and trends over repeated attempts. If you're prototyping a UI from this doc, don't add fields for typing question/option text — there aren't any.
+
 ## Running it
 
 Just open `index.html` in a browser. There is nothing to install and nothing to build.
@@ -15,7 +17,7 @@ To host it on GitHub Pages: push this repo to GitHub and enable Pages for the de
 ## How it works
 
 - **Books → Chapters → Questions.** Create a book, add chapters to it. Each chapter is its own question bank.
-- **First attempt defines the questions as you go.** There's no pre-built question schema. When you start a chapter for the first time, you're asked how many questions it has, then for each one you pick a type (Multiple Choice — single or multi-select — or True/False), configure its options, and immediately record your answer. Structure and your first attempt are captured together in one pass. If you don't know the count yet, choose "Add questions one at a time instead" — you'll get "Add another question" / "Finish attempt" buttons and can stop whenever you've covered them all. If you add one too many by mistake, "Remove this question & finish" on that extra question discards it and finishes with what you already have.
+- **First attempt defines the questions as you go.** There's no pre-built question schema. When you start a chapter for the first time, you're asked how many questions it has, then for each one you pick a type (Multiple Choice — single or multi-select — or True/False) and, for Multiple Choice, how many options it has (2–8, auto-labeled A/B/C/...), and immediately record your answer. Structure and your first attempt are captured together in one pass. If you don't know the count yet, choose "Add questions one at a time instead" — you'll get "Add another question" / "Finish attempt" buttons and can stop whenever you've covered them all. If you add one too many by mistake, "Remove this question & finish" on that extra question discards it and finishes with what you already have.
 - **Review & grade afterward.** Once you've finished a pass, go to the Review screen and lock in what the correct answer is for each question — that's when grading actually happens. You can come back and edit a correct answer later; every past attempt for that question is automatically re-graded against the new answer.
 - **Retake anytime.** Once a chapter's structure exists, hit "Retake" to answer the same questions again. It's graded immediately against the correct answers already on file.
 - **Trends.** Every attempt is kept in full (not just a rolling score), so the chapter detail and Trends views show your score over time, your weakest questions, and the per-question history of getting something right/wrong across attempts.

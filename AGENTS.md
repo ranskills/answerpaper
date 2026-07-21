@@ -50,6 +50,8 @@ Store = {
 
 Key invariants:
 
+- Questions and options intentionally carry no free-text prompt/content field — questions are referenced only by number and options only by letter (auto-generated in `wizardUpdateOptionCount`, `assets/js/screens/wizard-new.js`) or True/False. The real question/answer content lives in whatever external source the user is practicing from; this is a deliberate design choice (see README.md's "not a trivia/quiz-content app" callout), not a missing feature — don't add a question/option text field.
+- `correctAnswer` is user-declared on the Review screen, not computed or validated against any real-world fact — grading is pure set-equality against whatever the user says is correct.
 - `chosen` and `correctAnswer` are always arrays, even for single-select/true-false — grading is just set-equality (`gradeResponse` in `logic.js`), so there's no cardinality special-casing.
 - `correctAnswer` is `null` until the user locks it in on the Review screen; `response.correct` is `null` (ungraded) until then.
 - `questionOrder` on the chapter (not an order field on the question) is the single source of truth for question numbering — both the wizard and the print view number questions by this array, not by insertion order.
