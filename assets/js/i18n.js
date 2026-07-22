@@ -75,6 +75,7 @@ const STRINGS = {
       goHome: "Go home",
       skipToContent: "Skip to main content",
       primaryNavLabel: "Primary",
+      titleRequired: "Enter a title — spaces alone don't count.",
       book: { one: "{count} book", other: "{count} books" },
       chapter: { one: "{count} chapter", other: "{count} chapters" },
       attempt: { one: "{count} attempt", other: "{count} attempts" },

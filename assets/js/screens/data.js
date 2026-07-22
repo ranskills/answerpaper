@@ -118,7 +118,10 @@ function handleAddBook(event) {
   event.preventDefault();
   const input = document.getElementById("new-book-title");
   const title = input.value.trim();
-  if (!title) return false;
+  if (!title) {
+    reportCustomValidity(input, t("common.titleRequired"));
+    return false;
+  }
   addBook(title);
   uiState.addBookOpen = false;
   renderBookList();
@@ -137,7 +140,10 @@ function handleRenameBook(event, bookId) {
   event.preventDefault();
   const input = document.getElementById("rename-book-title");
   const title = input.value.trim();
-  if (!title) return false;
+  if (!title) {
+    reportCustomValidity(input, t("common.titleRequired"));
+    return false;
+  }
   renameBook(bookId, title);
   uiState.renameBookId = null;
   renderBookList();

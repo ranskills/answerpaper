@@ -110,6 +110,17 @@ function focusById(id) {
   if (el) el.focus();
 }
 
+// Shows the browser's native validation bubble with a custom message (e.g.
+// for a whitespace-only title, which passes the `required` attribute).
+// Clearing customValidity is deferred to the next "input" event rather than
+// done synchronously, since clearing it right away dismisses the bubble
+// before the user has a chance to read it.
+function reportCustomValidity(input, message) {
+  input.setCustomValidity(message);
+  input.reportValidity();
+  input.addEventListener("input", () => input.setCustomValidity(""), { once: true });
+}
+
 function updateNavActiveState() {
   const parts = currentRoute();
   const homeLink = document.querySelector('nav a[href="#/"]');
