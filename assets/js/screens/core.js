@@ -110,11 +110,8 @@ function focusById(id) {
   if (el) el.focus();
 }
 
-// Shows the browser's native validation bubble with a custom message (e.g.
-// for a whitespace-only title, which passes the `required` attribute).
-// Clearing customValidity is deferred to the next "input" event rather than
-// done synchronously, since clearing it right away dismisses the bubble
-// before the user has a chance to read it.
+// Clearing customValidity right after reportValidity() dismisses the bubble
+// before the user can read it, so defer the clear to the next "input" event.
 function reportCustomValidity(input, message) {
   input.setCustomValidity(message);
   input.reportValidity();
