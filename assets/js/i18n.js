@@ -1,12 +1,11 @@
-/* i18n prototype — Home screen only, to validate the extraction pattern before rolling out further. */
-
-const LANG_KEY = "answerpaper.lang";
+/* i18n scaffold — English only for now. STRINGS is keyed by language so a
+   future translation can be added back as a sibling of `en` without
+   reshaping t()/tn() or the call sites. */
 
 // Each leaf is either a plain string (with {name} placeholders) or, for
 // count-sensitive strings, a { one, other } pair selected via Intl.PluralRules
-// — French pluralizes 0/1 as "one" like English does, but not every language
-// does, so this shape (rather than a naive count===1 check) is what actually
-// generalizes.
+// — not every language pluralizes the same way, so this shape (rather than a
+// naive count===1 check) is what actually generalizes.
 const STRINGS = {
   en: {
     home: {
@@ -278,79 +277,12 @@ const STRINGS = {
       question: "Q{n}.",
     },
   },
-  fr: {
-    home: {
-      title: "Accueil",
-      onboardingPre: "Nouveau ici ? Le principe : créez un",
-      onboardingBook: "livre",
-      onboardingMid1: "→ ajoutez-lui un",
-      onboardingChapter: "chapitre",
-      onboardingMid2: "→ faites une",
-      onboardingAttempt: "tentative",
-      onboardingPost:
-        "sur le chapitre → corrigez vos réponses → recommencez et suivez vos progrès dans le temps.",
-      continueStudying: "Continuer l'étude",
-      lastAttempt: "Dernière tentative : {score} · {date}",
-      retake: "Recommencer",
-      viewTrends: "Voir les tendances",
-      booksChapters: "Livres / Chapitres",
-      attempts: { one: "Tentative", other: "Tentatives" },
-      dayStreak: "Jours consécutifs",
-      timeStudied: "Temps d'étude",
-      needsAttention: "À revoir",
-      notStartedYet: "Pas encore commencé",
-      flaggedToReview: {
-        one: "{count} réponse signalée à revoir",
-        other: "{count} réponses signalées à revoir",
-      },
-      recentActivity: "Activité récente",
-      colChapter: "Chapitre",
-      colDate: "Date",
-      colScore: "Score",
-      noAttemptsPre: "Aucune tentative pour l'instant.",
-      noAttemptsLink: "Commencez par vos livres",
-      getStarted: "Commencer",
-      loadSampleData: "Charger des données d'exemple",
-    },
-  },
 };
 
+// Fixed at "en" while only one language is available. A future language
+// switcher can replace this with a stored preference again.
 function getLang() {
-  const l = localStorage.getItem(LANG_KEY);
-  return l === "fr" ? "fr" : "en";
-}
-
-function setLang(lang) {
-  if (lang === "fr") localStorage.setItem(LANG_KEY, "fr");
-  else localStorage.removeItem(LANG_KEY);
-  updateLangToggleButton();
-  updateStaticChrome();
-  if (typeof render === "function") render();
-}
-
-// Header/nav/skip-link live outside #main, so they aren't rebuilt by the
-// per-screen render() calls — they need their own update on language change.
-function updateStaticChrome() {
-  const skipLink = document.getElementById("skip-link");
-  if (skipLink) skipLink.textContent = t("common.skipToContent");
-  const nav = document.getElementById("primary-nav");
-  if (nav) nav.setAttribute("aria-label", t("common.primaryNavLabel"));
-  const navHome = document.getElementById("nav-home");
-  if (navHome) navHome.textContent = t("home.title");
-  const navBooks = document.getElementById("nav-books");
-  if (navBooks) navBooks.textContent = t("books.title");
-  const navData = document.getElementById("nav-data");
-  if (navData) navData.textContent = t("data.title");
-}
-
-function cycleLang() {
-  setLang(getLang() === "en" ? "fr" : "en");
-}
-
-function updateLangToggleButton() {
-  const btn = document.getElementById("lang-toggle");
-  if (!btn) return;
-  btn.textContent = "Language: " + (getLang() === "fr" ? "Français" : "English");
+  return "en";
 }
 
 function interpolate(str, vars) {
@@ -359,8 +291,8 @@ function interpolate(str, vars) {
 }
 
 // Looks up "home.retake"-style dotted keys against the current language,
-// falling back to English so a missing French entry degrades gracefully
-// instead of throwing or showing a raw key.
+// falling back to English so a missing entry in a future language degrades
+// gracefully instead of throwing or showing a raw key.
 function t(key, vars) {
   const path = key.split(".");
   const lookup = (dict) => path.reduce((node, part) => (node ? node[part] : undefined), dict);

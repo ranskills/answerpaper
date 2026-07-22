@@ -350,8 +350,5 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("version-tag").textContent = APP_VERSION;
   updateThemeToggleButton();
   document.getElementById("theme-toggle").addEventListener("click", cycleTheme);
-  updateLangToggleButton();
-  updateStaticChrome();
-  document.getElementById("lang-toggle").addEventListener("click", cycleLang);
   render();
 });
