@@ -42,6 +42,7 @@ function renderData() {
     ${emptyState}
     <div class="card">
       <h2>${t("data.storage")}</h2>
+      <p style="margin: 0 0 var(--space-3)">${t("data.privacyNote")}</p>
       <p class="card-meta" style="margin: 0">
         ${t("data.storedInBrowser", { size: formatBytes(dataStorageBytes()) })}${archivedCount ? html` · ${tn("common.archivedBook", archivedCount)}` : null}
       </p>
@@ -117,7 +118,10 @@ function handleAddBook(event) {
   event.preventDefault();
   const input = document.getElementById("new-book-title");
   const title = input.value.trim();
-  if (!title) return false;
+  if (!title) {
+    reportCustomValidity(input, t("common.titleRequired"));
+    return false;
+  }
   addBook(title);
   uiState.addBookOpen = false;
   renderBookList();
@@ -136,7 +140,10 @@ function handleRenameBook(event, bookId) {
   event.preventDefault();
   const input = document.getElementById("rename-book-title");
   const title = input.value.trim();
-  if (!title) return false;
+  if (!title) {
+    reportCustomValidity(input, t("common.titleRequired"));
+    return false;
+  }
   renameBook(bookId, title);
   uiState.renameBookId = null;
   renderBookList();

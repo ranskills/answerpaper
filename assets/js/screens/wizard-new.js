@@ -23,7 +23,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
         </div>
       </div>
       <p class="wizard-unsure-hint">
-        ${t("wizard.unsureHint")}
+        ${t("wizard.unsureHint")}${" "}
         <button type="button" class="link-inline" onClick=${startNewWizardUnbounded}>
           ${t("wizard.addOneAtATime")}</button
         >${t("wizard.unsureHintEnd")}
@@ -192,6 +192,12 @@ function wizardUpdateType(type) {
     Wizard.currentConfig = {};
   }
   render();
+  // Preact keeps the same <select> DOM node across the re-render, so it stays
+  // focused — and the keyboard shortcuts below ignore keydowns on SELECTs
+  // (isEditableTarget), leaving the advertised letter/T/F shortcuts dead
+  // right when a user would naturally try them.
+  const select = document.getElementById("q-type");
+  if (select) select.blur();
 }
 
 function wizardUpdateOptionCount(value) {

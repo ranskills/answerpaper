@@ -148,7 +148,10 @@ function handleAddChapter(event, bookId) {
   event.preventDefault();
   const input = document.getElementById("new-chapter-title");
   const title = input.value.trim();
-  if (!title) return false;
+  if (!title) {
+    reportCustomValidity(input, t("common.titleRequired"));
+    return false;
+  }
   addChapter(bookId, title);
   uiState.addChapterOpen = false;
   renderChapterList(bookId);
@@ -167,7 +170,10 @@ function handleRenameChapter(event, bookId, chapterId) {
   event.preventDefault();
   const input = document.getElementById("rename-chapter-title");
   const title = input.value.trim();
-  if (!title) return false;
+  if (!title) {
+    reportCustomValidity(input, t("common.titleRequired"));
+    return false;
+  }
   renameChapter(chapterId, title);
   uiState.renameChapterId = null;
   renderChapterList(bookId);

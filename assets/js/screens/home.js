@@ -28,11 +28,12 @@ function renderHome() {
   const onboarding =
     Store.books.length === 0
       ? html`<p class="onboarding-hint">
-          ${t("home.onboardingPre")}
-          <strong>${t("home.onboardingBook")}</strong> ${t("home.onboardingMid1")}
-          <strong>${t("home.onboardingChapter")}</strong> ${t("home.onboardingMid2")}
-          <strong>${t("home.onboardingAttempt")}</strong> ${t("home.onboardingPost")}
-        </p>`
+            ${t("home.onboardingPre")}
+            <strong>${t("home.onboardingBook")}</strong> ${t("home.onboardingMid1")}
+            <strong>${t("home.onboardingChapter")}</strong> ${t("home.onboardingMid2")}
+            <strong>${t("home.onboardingAttempt")}</strong> ${t("home.onboardingPost")}
+          </p>
+          <p class="onboarding-hint">${t("home.privacyNote")}</p>`
       : null;
 
   const continueChapter = Store.attempts.length ? computeContinueChapter(Store) : null;
