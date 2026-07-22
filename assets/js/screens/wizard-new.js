@@ -192,6 +192,12 @@ function wizardUpdateType(type) {
     Wizard.currentConfig = {};
   }
   render();
+  // Preact keeps the same <select> DOM node across the re-render, so it stays
+  // focused — and the keyboard shortcuts below ignore keydowns on SELECTs
+  // (isEditableTarget), leaving the advertised letter/T/F shortcuts dead
+  // right when a user would naturally try them. Blur it so they work.
+  const select = document.getElementById("q-type");
+  if (select) select.blur();
 }
 
 function wizardUpdateOptionCount(value) {
