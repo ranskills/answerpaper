@@ -146,6 +146,14 @@ function updateNavActiveState() {
 function render() {
   updateNavActiveState();
   const parts = currentRoute();
+  // #print-root lives outside #main (so it can stay put while everything
+  // else hides for actual printing), which means it isn't cleared by the
+  // screen switch below — clear it on every route except the print screen
+  // itself, or its on-screen preview would linger under unrelated pages.
+  if (parts[4] !== "print") {
+    const printRoot = document.getElementById("print-root");
+    if (printRoot) printRoot.innerHTML = "";
+  }
   if (parts.length === 0) return renderHome();
   if (parts[0] === "data" && parts.length === 1) return renderData();
   if (parts[0] === "books" && parts.length === 1) return renderBookList();
