@@ -42,6 +42,7 @@ function renderData() {
     ${emptyState}
     <div class="card">
       <h2>${t("data.storage")}</h2>
+      <p style="margin: 0 0 var(--space-3)">${t("data.privacyNote")}</p>
       <p class="card-meta" style="margin: 0">
         ${t("data.storedInBrowser", { size: formatBytes(dataStorageBytes()) })}${archivedCount ? html` · ${tn("common.archivedBook", archivedCount)}` : null}
       </p>

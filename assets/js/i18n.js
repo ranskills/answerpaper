@@ -17,6 +17,8 @@ const STRINGS = {
       onboardingMid2: "to it → take an",
       onboardingAttempt: "attempt",
       onboardingPost: "on the chapter → grade your answers → retake and track trends over time.",
+      privacyNote:
+        "Everything stays on this device — there's no account and nothing is sent to a server.",
       continueStudying: "Continue studying",
       lastAttempt: "Last attempt: {score} · {date}",
       retake: "Retake",
@@ -117,6 +119,8 @@ const STRINGS = {
         "Permanently erase all books, chapters, questions, and attempts from this browser. This cannot be undone.",
       clearAllData: "Clear all data",
       storage: "Storage",
+      privacyNote:
+        "Nothing here is uploaded anywhere — no account, no server. It all lives in this browser until you export it below.",
       storedInBrowser: "{size} stored in this browser",
       trackingSince: "Tracking since {date}",
       backup: "Backup",
