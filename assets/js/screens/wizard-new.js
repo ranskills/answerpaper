@@ -23,7 +23,7 @@ function renderNewWizard(bookId, chapterId, chapter) {
         </div>
       </div>
       <p class="wizard-unsure-hint">
-        ${t("wizard.unsureHint")}
+        ${t("wizard.unsureHint")}${" "}
         <button type="button" class="link-inline" onClick=${startNewWizardUnbounded}>
           ${t("wizard.addOneAtATime")}</button
         >${t("wizard.unsureHintEnd")}
