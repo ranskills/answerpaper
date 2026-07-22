@@ -10,6 +10,7 @@ function renderChapterDetail(bookId, chapterId) {
 
   const attempts = attemptsForChapter(Store, chapterId).slice().reverse();
   const isFirstTime = chapter.questionOrder.length === 0;
+  const hasDraft = wizardDraftExistsFor(chapterId);
 
   const rows = attempts.map((attempt) => {
     const attemptScore = computeAttemptScore(Store, attempt);
@@ -90,7 +91,13 @@ function renderChapterDetail(bookId, chapterId) {
     <h1>${chapter.title}</h1>
     <div class="btn-row">
       <a class="btn primary" href=${"#/books/" + bookId + "/chapters/" + chapterId + "/attempt"}
-        >${isFirstTime ? t("chapterDetail.startAttempt") : t("home.retake")}</a
+        >${
+          hasDraft
+            ? t("home.resumeAttempt")
+            : isFirstTime
+              ? t("chapterDetail.startAttempt")
+              : t("home.retake")
+        }</a
       >
       ${
         isFirstTime

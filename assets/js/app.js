@@ -5,6 +5,7 @@ const APP_VERSION = "v0.1.0";
 const STORAGE_KEY = "answerpaper.store.v1";
 const THEME_KEY = "answerpaper.theme";
 const LAST_EXPORT_KEY = "answerpaper.lastExport";
+const WIZARD_DRAFT_KEY = "answerpaper.wizardDraft.v1";
 
 /* ---------- Theme ---------- */
 
@@ -83,6 +84,31 @@ function dataStorageBytes() {
 function resetStore() {
   Store = emptyStore();
   saveStore();
+}
+
+/* ---------- Wizard draft (in-progress attempt, survives reload) ---------- */
+
+function saveWizardDraft(wizard) {
+  localStorage.setItem(WIZARD_DRAFT_KEY, JSON.stringify(wizard));
+}
+
+function loadWizardDraft() {
+  const raw = localStorage.getItem(WIZARD_DRAFT_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function clearWizardDraft() {
+  localStorage.removeItem(WIZARD_DRAFT_KEY);
+}
+
+function wizardDraftExistsFor(chapterId) {
+  const draft = loadWizardDraft();
+  return !!draft && draft.chapterId === chapterId;
 }
 
 /* ---------- Books ---------- */

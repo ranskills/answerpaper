@@ -40,6 +40,9 @@ function renderHome() {
   const continueTrend = continueChapter
     ? renderTrendBadge(computeChapterScoreTrend(Store, continueChapter.chapter.id))
     : null;
+  const continueHasDraft = continueChapter
+    ? wizardDraftExistsFor(continueChapter.chapter.id)
+    : false;
   const continueCard = continueChapter
     ? html`
         <div class="card">
@@ -63,7 +66,7 @@ function renderHome() {
             <a
               class="btn primary"
               href=${"#/books/" + continueChapter.book.id + "/chapters/" + continueChapter.chapter.id + "/attempt"}
-              >${t("home.retake")}</a
+              >${continueHasDraft ? t("home.resumeAttempt") : t("home.retake")}</a
             >
             <a
               class="btn"

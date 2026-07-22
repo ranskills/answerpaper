@@ -26,8 +26,21 @@ async function cancelWizard() {
   )
     return;
   Wizard = null;
+  clearWizardDraft();
   navigate("/books/" + bookId + "/chapters/" + chapterId);
   render();
+}
+
+// A resumed draft is only safe to reuse if it still lines up with the
+// chapter's current question order — e.g. a retake draft referencing a
+// question index that no longer exists because a question was deleted
+// elsewhere in the meantime.
+function wizardDraftIsUsable(draft, mode, chapter) {
+  if (draft.mode !== mode) return false;
+  if (mode === "retake") {
+    return Number.isInteger(draft.index) && draft.index < chapter.questionOrder.length;
+  }
+  return Number.isInteger(draft.index) && draft.index >= 0;
 }
 
 const DEFAULT_MCQ_CONFIG = { optionLabels: ["A", "B", "C", "D"], multiSelect: false };
@@ -43,12 +56,18 @@ function renderAttemptWizard(bookId, chapterId) {
     " — " +
     t("common.appName");
 
-  if (
-    !Wizard ||
-    Wizard.chapterId !== chapterId ||
-    Wizard.mode !== (isFirstTime ? "new" : "retake")
-  ) {
-    if (isFirstTime) {
+  const mode = isFirstTime ? "new" : "retake";
+
+  if (!Wizard || Wizard.chapterId !== chapterId || Wizard.mode !== mode) {
+    const draft = loadWizardDraft();
+    if (
+      draft &&
+      draft.chapterId === chapterId &&
+      draft.bookId === bookId &&
+      wizardDraftIsUsable(draft, mode, chapter)
+    ) {
+      Wizard = draft;
+    } else if (mode === "new") {
       Wizard = {
         chapterId,
         bookId,
@@ -80,6 +99,8 @@ function renderAttemptWizard(bookId, chapterId) {
       };
     }
   }
+
+  saveWizardDraft(Wizard);
 
   if (Wizard.mode === "new") return renderNewWizard(bookId, chapterId, chapter);
   return renderRetakeWizard(bookId, chapterId, chapter);

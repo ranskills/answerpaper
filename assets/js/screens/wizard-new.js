@@ -265,6 +265,7 @@ function finishNewAttempt() {
   const bookId = Wizard.bookId,
     chapterId = Wizard.chapterId;
   Wizard = null;
+  clearWizardDraft();
   navigate("/books/" + bookId + "/chapters/" + chapterId + "/attempt/" + attempt.id + "/review");
   render();
 }

@@ -22,6 +22,7 @@ const STRINGS = {
       continueStudying: "Continue studying",
       lastAttempt: "Last attempt: {score} · {date}",
       retake: "Retake",
+      resumeAttempt: "Resume attempt",
       viewTrends: "View trends",
       booksChapters: "Books / Chapters",
       attempts: { one: "Attempt", other: "Attempts" },
