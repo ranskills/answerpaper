@@ -75,6 +75,7 @@ const STRINGS = {
       pageNotFound: "Page not found.",
       goHome: "Go home",
       skipToContent: "Skip to main content",
+      footerVersion: "Version: {version}",
       primaryNavLabel: "Primary",
       titleRequired: "Enter a title — spaces alone don't count.",
       book: { one: "{count} book", other: "{count} books" },

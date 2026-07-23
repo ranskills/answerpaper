@@ -373,7 +373,9 @@ window.addEventListener("beforeunload", (e) => {
 
 window.addEventListener("hashchange", () => render());
 window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("version-tag").textContent = APP_VERSION;
+  document.getElementById("footer-version").textContent = t("common.footerVersion", {
+    version: APP_VERSION,
+  });
   document.getElementById("skip-link").textContent = t("common.skipToContent");
   updateThemeToggleButton();
   document.getElementById("theme-toggle").addEventListener("click", cycleTheme);
