@@ -40,8 +40,8 @@ export default [
     },
     rules: {
       // Files share an implicit global scope across <script> tags (no modules,
-      // no imports) — see AGENTS.md "File layout". ESLint can't resolve
-      // cross-file globals, so no-undef would false-positive on every
+      // no imports) — see docs/architecture.md "File layout". ESLint can't
+      // resolve cross-file globals, so no-undef would false-positive on every
       // function/const defined in another script.
       "no-undef": "off",
       // vars: "local" skips top-level declarations too — they're routinely
