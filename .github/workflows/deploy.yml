@@ -1,0 +1,55 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history so `git describe` can see tags.
+          fetch-depth: 0
+
+      # Only index.html + assets/ are ever loaded by the browser — everything
+      # else (docs, configs, lockfile, .github/...) shouldn't be public.
+      - name: Stage deployable files
+        run: |
+          mkdir _site
+          cp index.html _site/
+          cp -r assets _site/
+
+      # Stamps the footer's APP_VERSION on the staged copy only — never the repo.
+      - name: Inject build version
+        run: |
+          VERSION="$(git describe --tags --always)"
+          sed -i "s#const APP_VERSION = \"[^\"]*\";#const APP_VERSION = \"$VERSION\";#" _site/assets/js/app.js
+          echo "Deploying version: $VERSION"
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v5
+        id: deployment
