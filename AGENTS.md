@@ -14,6 +14,8 @@ This guarantee — `index.html` opened directly (including via `file://`) requir
 
 Dev-only tooling is a separate concern from the runtime: ESLint + Prettier, enforced via a pre-commit hook (Husky + lint-staged) and CI (`.github/workflows/lint.yml`). This repo uses **pnpm**, not npm/yarn; the Node version is pinned in `.node-version` (pnpm hard-fails with a clear version-mismatch error, not a broken install, if the active Node doesn't satisfy it — switch Node versions, e.g. via `nvm`, if you hit that). Install with `pnpm install`, then `pnpm run lint` / `pnpm run format`. **Before considering a JS or CSS change complete, run `pnpm run lint:fix` and `pnpm run format`** and resolve anything that surfaces. `eslint.config.mjs` turns off `no-undef` and scopes `no-unused-vars` to local (non-top-level) bindings only — necessary because files share an implicit global scope across `<script>` tags (see "File layout" in `docs/architecture.md`), so a top-level function used only by a later script looks "unused"/"undefined" from a single file's perspective.
 
+Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, ...), enforced by a `commit-msg` hook (Husky + commitlint, config in `commitlint.config.mjs`) — a non-conforming message is rejected at commit time, not just flagged.
+
 ## Architecture reference
 
 Before making structural changes (new screens, data model edits, routing, state management) or touching design conventions/i18n, read `docs/architecture.md` — it covers file layout, the `Store` data model and its invariants, state management, routing, design conventions, and the i18n (`t()`/`tn()`) system in full detail.
