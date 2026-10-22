@@ -1,9 +1,11 @@
 name: Lint
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_call:
+  # There is deliberately no `push: branches: [main]` trigger here — the
+  # deploy workflow already runs these checks on every push to main, so one
+  # would execute them twice for the same commit.
 
 jobs:
   lint:

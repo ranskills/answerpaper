@@ -15,7 +15,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Called as a reusable workflow so the gate and CI can't drift apart.
+  lint:
+    # Without this, the called workflow inherits this workflow's pages: write
+    # and id-token: write, which lint has no need for.
+    permissions:
+      contents: read
+    uses: ./.github/workflows/lint.yml
+
   build:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -35,7 +44,14 @@ jobs:
       - name: Inject build version
         run: |
           VERSION="$(git describe --tags --always)"
-          sed -i "s#const APP_VERSION = \"[^\"]*\";#const APP_VERSION = \"$VERSION\";#" _site/assets/js/app.js
+          TARGET="_site/assets/js/app.js"
+          # Fails the build if the pattern no longer matches, rather than
+          # silently shipping a stale version string.
+          sed -i "s#const APP_VERSION = \"[^\"]*\";#const APP_VERSION = \"$VERSION\";#" "$TARGET"
+          if ! grep -q "const APP_VERSION = \"$VERSION\";" "$TARGET"; then
+            echo "::error::Failed to inject APP_VERSION=$VERSION into $TARGET — the const APP_VERSION pattern in assets/js/app.js has changed. Update the sed above."
+            exit 1
+          fi
           echo "Deploying version: $VERSION"
 
       - uses: actions/configure-pages@v6
